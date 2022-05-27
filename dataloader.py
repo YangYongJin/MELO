@@ -8,9 +8,13 @@ import wget
 import zipfile
 from pathlib import Path
 
+ROOT_FOLDER = "Data"
+
 
 class DataLoader():
     def __init__(self, file_path, mode="ml-1m"):
+        os.makedirs(os.path.join(os.path.abspath(
+            '.'), ROOT_FOLDER), exist_ok=True)
         self.sequence_length = 5
         self.df, self.umap, self.smap = self.preprocessing(file_path, mode)
         self.train_set, self.valid_set = self.split_data(self.df)
@@ -63,7 +67,7 @@ class DataLoader():
         return df, umap, smap
 
     def download_raw_movielnes_data(self):
-        folder_path = Path("Data").joinpath("ml-1m")
+        folder_path = Path(ROOT_FOLDER).joinpath("ml-1m")
         if folder_path.is_dir() and\
            all(folder_path.joinpath(filename).is_file() for filename in self.all_raw_file_names()):
             print('Raw data already exists. Skip downloading')

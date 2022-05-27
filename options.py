@@ -10,9 +10,9 @@ parser.add_argument('--mode', type=str, default='ml-1m',
                     help='ml-1m or amazon')
 parser.add_argument('--num_inner_steps', type=int, default=5,
                     help='number of inner-loop updates')
-parser.add_argument('--inner_lr', type=float, default=0.002,
+parser.add_argument('--inner_lr', type=float, default=0.004,
                     help='inner-loop learning rate initialization')
-parser.add_argument('--outer_lr', type=float, default=0.001,
+parser.add_argument('--outer_lr', type=float, default=0.002,
                     help='outer-loop learning rate')
 parser.add_argument('--num_train_iterations', type=int, default=500,
                     help='number of outer-loop updates to train for')

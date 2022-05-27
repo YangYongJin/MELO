@@ -8,7 +8,7 @@ import torch.optim as optim
 import copy
 import os
 import numpy as np
-import tqdm
+from tqdm import tqdm
 from torch.utils.tensorboard import SummaryWriter
 
 
