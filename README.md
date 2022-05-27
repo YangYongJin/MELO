@@ -1,5 +1,5 @@
 # BERT4REC_MAML  
-BERT4REC_MAML is a MAML for BERT4REC model. 
+BERT4REC_MAML is a MAML for BERT4REC model.\ 
 Reference code: https://github.com/jaywonchung/BERT4Rec-VAE-Pytorch  
 
 ## Dependencies  
@@ -12,8 +12,9 @@ Reference code: https://github.com/jaywonchung/BERT4Rec-VAE-Pytorch
 python main.py 
 ```  
 
-## Files 
-"models" folder  : bert4rec models 
-"dataloader" file: data preprocessing and task generation 
-"main.py" file   : main algorithm for maml 
-"options.py"     : hyperparamters control
+## Files
+
+"models" folder  : bert4rec models\ 
+"dataloader" file: data preprocessing and task generation\
+"main.py" file   : main algorithm for maml\ 
+"options.py"     : hyperparamters control\
