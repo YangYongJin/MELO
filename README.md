@@ -4,8 +4,8 @@ Reference code: https://github.com/jaywonchung/BERT4Rec-VAE-Pytorch
 
 ## Dependencies  
 * pytorch 
-* * tqdm 
-* * tensorboard  
+* tqdm 
+* tensorboard  
 
 ## Usage  
 ```bash 
