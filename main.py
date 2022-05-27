@@ -79,7 +79,7 @@ class MAML:
                     self.device),  product_history_ratings.to(self.device)
             self.model.zero_grad()
             outputs = self.model(inputs)
-            loss = loss_fn(outputs, target_rating)
+            loss = loss_fn(outputs, target_rating.to(self.device))
             loss.backward()
             grad_dict = {k: v.grad for k, v in zip(
                 self.model.state_dict(), self.model.parameters())}
@@ -120,6 +120,7 @@ class MAML:
                 self.device), \
                 target_product_id.to(
                     self.device),  product_history_ratings.to(self.device)
+            target_rating = target_rating.to(self.device)
             outputs = self.model(inputs)
             loss = loss_fn(outputs, target_rating)
             self.model.zero_grad()
