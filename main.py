@@ -66,28 +66,22 @@ class MAML:
         loss_fn = nn.MSELoss()
 
         # inner loop param
-        phi = copy.deepcopy(theta.state_dict())
-        theta_dict = copy.deepcopy(theta.state_dict())
+        phi_model = copy.deepcopy(theta)
+        optimizer = optim.SGD(phi_model.parameters(), lr=self._inner_lr)
 
         # inner loop optimization
         for _ in range(self._num_inner_steps + 1):
-            self.model.load_state_dict(phi)
             user_id, product_history, target_product_id,  product_history_ratings, target_rating = support_data
             inputs = user_id.to(self.device), product_history.to(
                 self.device), \
                 target_product_id.to(
                     self.device),  product_history_ratings.to(self.device)
-            self.model.zero_grad()
-            outputs = self.model(inputs)
+            optimizer.zero_grad()
+            outputs = phi_model(inputs)
             loss = loss_fn(outputs, target_rating.to(self.device))
             loss.backward()
-            grad_dict = {k: v.grad for k, v in zip(
-                self.model.state_dict(), self.model.parameters())}
-            with torch.no_grad():
-                for key in phi.keys():
-                    phi[key] = theta_dict[key] - \
-                        self._inner_lr * grad_dict[key]
-
+            optimizer.step()
+        phi = phi_model.state_dict()
         return phi
 
     def _outer_loop(self, task_batch, train=None):

@@ -22,5 +22,5 @@ class BERTModel(nn.Module):
         x = self.bert(inputs)
         x = self.dim_reduct(x)
         b, t, d = x.shape
-        x = x.view(b, -1)
+        x = x.view(b, -1)  # Batch size x (t*d)
         return self.out(x)
