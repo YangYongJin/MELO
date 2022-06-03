@@ -50,9 +50,9 @@ class MAML:
         self._train_step = 0
 
         self.loss_network = nn.Sequential(
-            nn.Linear(9, 9),
+            nn.Linear(8, 8),
             nn.ReLU(),
-            nn.Linear(9, 1),
+            nn.Linear(8, 1),
         )
         self.loss_lr = 0.01
         self.loss_optimizer = optim.Adam(
@@ -109,15 +109,15 @@ class MAML:
             target_product_id.to(
                 self.device),  product_history_ratings.to(self.device)
         task_info = task_info.to(self.device)
+        task_info_adapt = (task_info-task_info.mean()) / \
+            (task_info.std() + 1e-12)
         target_rating = target_rating.to(self.device)
         # inner loop optimization
         for _ in range(self._num_inner_steps + 1):
             optimizer.zero_grad()
             outputs = phi_model(inputs)
-            loss_val = loss_fn(outputs, target_rating)
-            loss_task_info = torch.cat(
-                [loss_val.reshape(1), task_info])
-            loss = self.loss_network(loss_task_info)
+            loss = loss_fn(outputs, target_rating)
+            loss += self.loss_network(task_info_adapt)[0]
             loss.backward()
             optimizer.step()
         phi = phi_model.state_dict()
