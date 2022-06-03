@@ -45,5 +45,7 @@ parser.add_argument('--num_samples', type=int, default=25,
                     help='number of subsamples')
 parser.add_argument('--multi_step_loss_num_epochs', type=int, default=200,
                     help='number of epochs using multi step loss')
+parser.add_argument('--use_multi_step', type=bool, default=True,
+                    help='use multi step loss or not')
 
 args = parser.parse_args()

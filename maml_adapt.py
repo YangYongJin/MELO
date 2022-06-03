@@ -15,9 +15,7 @@ from torch.utils.tensorboard import SummaryWriter
 SAVE_INTERVAL = 50
 LOG_INTERVAL = 1
 VAL_INTERVAL = 10
-NUM_TRAIN_TASKS = 20
 NUM_TEST_TASKS = 100
-NUM_ITERATIONS = 200
 
 
 class MAML:
@@ -43,6 +41,8 @@ class MAML:
         os.makedirs(self._log_dir, exist_ok=True)
         os.makedirs(self._save_dir, exist_ok=True)
 
+        self.use_multi_step = args.use_multi_step
+
         self._num_inner_steps = args.num_inner_steps
         self._inner_lr = args.inner_lr
         self._outer_lr = args.outer_lr
@@ -53,12 +53,16 @@ class MAML:
             nn.Linear(8, 8),
             nn.ReLU(),
             nn.Linear(8, 1),
-        )
+        ).to(self.device)
+        self.meta_optimizer = optim.SGD(
+            self.model.parameters(), lr=self._outer_lr)
         self.loss_lr = 0.01
         self.loss_optimizer = optim.Adam(
             self.loss_network.parameters(), lr=self.loss_lr)
 
         print("Finished initialization")
+
+    # per step loss weight for multi step loss function
 
     def get_per_step_loss_importance_vector(self):
         """
@@ -83,45 +87,95 @@ class MAML:
             1.0 - ((self._num_inner_steps - 1) * min_value_for_non_final_losses))
         loss_weights[-1] = curr_value
         loss_weights = torch.Tensor(loss_weights).to(device=self.device)
+        print(loss_weights)
         return loss_weights
 
-    def _inner_loop(self, theta, support_data, task_info):
+    # update meta paramters
+    def update_meta_params(self, query_inputs, query_target_rating, optimizer, loss_fn, mae_loss_fn, phi_model, imp_weight=1):
+        # get gradients
+        optimizer.zero_grad()
+        outputs = phi_model(query_inputs)
+        query_loss = loss_fn(outputs, query_target_rating)
+        query_loss.backward()
+
+        # update meta loss function
+        for k, v in zip(self.model.parameters(), phi_model.parameters()):
+            if k.grad == None:
+                k.grad = imp_weight*(v.grad)
+            else:
+                k.grad += imp_weight*(v.grad)
+        mae_loss = mae_loss_fn(outputs, query_target_rating)
+        return query_loss, mae_loss
+
+    # inner loop optimization
+
+    def _inner_loop(self, support_data, task_info, query_inputs, query_target_rating, imp_vecs, train):
         """Computes the adapted network parameters via the MAML inner loop.
 
         Args:
-            theta (List[Tensor]): current model parameters
-            support_data (Tensor): task support set inputs
+            support_data: support data
+            task_info: task information
+            query_inputs: query data
+            query_target_rating: query target
+            imp_vecs: important vectors for multi step loss
+            train: train params
 
         Returns:
-            phi: optimized weight(state_dict)
+            query_loss: query mse loss
+            mae_loss: query mae loss
         """
 
-        # loss function
+        # loss functions
         loss_fn = nn.MSELoss()
+        mae_loss_fn = nn.L1Loss()
 
-        # inner loop param
-        phi_model = copy.deepcopy(theta)
+        # inner loop params
+        phi_model = copy.deepcopy(self.model)
         optimizer = optim.SGD(phi_model.parameters(), lr=self._inner_lr)
 
+        # GPU enabling
         user_id, product_history, target_product_id,  product_history_ratings, target_rating = support_data
         inputs = user_id.to(self.device), product_history.to(
             self.device), \
             target_product_id.to(
                 self.device),  product_history_ratings.to(self.device)
         task_info = task_info.to(self.device)
+
+        # normalize task information
         task_info_adapt = (task_info-task_info.mean()) / \
             (task_info.std() + 1e-12)
         target_rating = target_rating.to(self.device)
+
         # inner loop optimization
-        for _ in range(self._num_inner_steps + 1):
+        for step in range(self._num_inner_steps):
+            # update phi(inner loop parameter)
             optimizer.zero_grad()
             outputs = phi_model(inputs)
             loss = loss_fn(outputs, target_rating)
             loss += self.loss_network(task_info_adapt)[0]
             loss.backward()
             optimizer.step()
-        phi = phi_model.state_dict()
-        return phi
+
+            ##### multi step loss ######
+            if self.use_multi_step and self._train_step < self.args.multi_step_loss_num_epochs and train:
+                query_loss, mae_loss = self.update_meta_params(
+                    query_inputs, query_target_rating, optimizer, loss_fn, mae_loss_fn, phi_model, imp_vecs[step])
+
+            # Fo-maml loss
+            else:
+                # after all updates
+                if step == self._num_inner_steps - 1:
+                    if train:
+                        phi_model.train()
+                    else:
+                        phi_model.eval()
+
+                    query_loss, mae_loss = self.update_meta_params(
+                        query_inputs, query_target_rating, optimizer, loss_fn, mae_loss_fn, phi_model)
+
+        return query_loss, mae_loss
+
+    # outer loop
 
     def _outer_loop(self, task_batch, train=None):
         """Computes the MAML loss and metrics on a batch of tasks.
@@ -134,54 +188,37 @@ class MAML:
             outer_loss: mean query MSE loss over the batch
             mae_loss: mean query MAE loss over the batch
         """
-
-        theta = copy.deepcopy(self.model).to(self.device)
+        # get importance weight
+        imp_vecs = self.get_per_step_loss_importance_vector()
 
         outer_loss_batch = []
         mae_loss_batch = []
 
-        loss_fn = nn.MSELoss()
-        mae_loss_fn = nn.L1Loss()
-        optimizer = optim.SGD(theta.parameters(), lr=self._outer_lr)
-        optimizer.zero_grad()
+        self.meta_optimizer.zero_grad()
         self.loss_optimizer.zero_grad()
+
+        # loop through task batch
         for idx, task in enumerate(tqdm(task_batch)):
+            # query data -> move them to gpu
             support, query, task_info = task
-            phi = self._inner_loop(theta, support, task_info)  # do inner loop
-            self.model.load_state_dict(phi)
             user_id, product_history, target_product_id,  product_history_ratings, target_rating = query
-            inputs = user_id.to(self.device), product_history.to(
+            query_inputs = user_id.to(self.device), product_history.to(
                 self.device), \
                 target_product_id.to(
                     self.device),  product_history_ratings.to(self.device)
-            target_rating = target_rating.to(self.device)
-            if train:
-                self.model.train()
-            else:
-                self.model.eval()
-            outputs = self.model(inputs)
-            loss = loss_fn(outputs, target_rating)
-            self.model.zero_grad()
-            # optimizer.zero_grad()
-            loss.backward()
+            query_target_rating = target_rating.to(self.device)
 
-            for k, v in zip(theta.parameters(), self.model.parameters()):
-                if idx == 0:
-                    k.grad = (v.grad)
-                else:
-                    k.grad += (v.grad)
-            # if train:
-            #     optimizer.step()
+            # inner loop operation
+            loss, mae_loss = self._inner_loop(
+                support, task_info, query_inputs, query_target_rating, imp_vecs, train)  # do inner loop
 
-            mae_loss = mae_loss_fn(outputs, target_rating)
             mae_loss_batch.append(mae_loss.detach().to("cpu").item())
             outer_loss_batch.append(loss.detach().to("cpu").item())
 
-        # Update model with new theta
+        # Update meta parameters
         if train:
-            optimizer.step()
+            self.meta_optimizer.step()
             self.loss_optimizer.step()
-            self.model.load_state_dict(theta.state_dict())
 
         outer_loss = np.mean(outer_loss_batch)
         mae_loss = np.mean(mae_loss_batch)
