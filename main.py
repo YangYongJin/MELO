@@ -276,8 +276,8 @@ class MAML:
                 )
 
                 writer.add_scalar(
-                    "train/MSEloss", outer_loss, self._train_step)
-                writer.add_scalar("train/MAEloss", mae_loss, self._train_step)
+                    "valid/MSEloss", outer_loss, self._train_step)
+                writer.add_scalar("valid/MAEloss", mae_loss, self._train_step)
         writer.close()
 
     def test(self):
