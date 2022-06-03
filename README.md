@@ -8,9 +8,19 @@ Reference code: https://github.com/jaywonchung/BERT4Rec-VAE-Pytorch
 * tensorboard  
 
 ## Usage  
+* maml with adaptive loss and multi step loss
 ```bash 
-python main.py 
-```  
+python main.py
+```
+*maml without multi step loss
+```bash 
+python main.py --use_multi_step=False
+```
+
+*normal FO-maml(no adaptive loss)
+```bash 
+python main.py --use_multi_step=False --use_adaptive_loss=False
+```
 
 ## Files
 
