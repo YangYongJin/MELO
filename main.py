@@ -59,7 +59,7 @@ class MAML:
                 nn.ReLU(),
                 nn.Linear(9, 1),
             ).to(self.device)
-            self.loss_lr = 0.01
+            self.loss_lr = 0.001
             self.loss_optimizer = optim.Adam(
                 self.loss_network.parameters(), lr=self.loss_lr)
 
@@ -155,7 +155,7 @@ class MAML:
                 # normalize task information
                 task_info_step = torch.cat((loss.reshape(1), task_info))
                 task_info_adapt = (task_info_step-task_info_step.mean()) / \
-                    (task_info_step.std() + 1e-12)
+                    (task_info_step.std() + 1e-5)
                 loss += self.loss_network(task_info_adapt)[0]
             loss.backward()
             optimizer.step()
