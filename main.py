@@ -55,9 +55,9 @@ class MAML:
         # loss function network
         if self.use_adaptive_loss:
             self.loss_network = nn.Sequential(
-                nn.Linear(8, 8),
+                nn.Linear(9, 9),
                 nn.ReLU(),
-                nn.Linear(8, 1),
+                nn.Linear(9, 1),
             ).to(self.device)
             self.loss_lr = 0.01
             self.loss_optimizer = optim.Adam(
@@ -143,9 +143,6 @@ class MAML:
                 self.device),  product_history_ratings.to(self.device)
         task_info = task_info.to(self.device)
 
-        # normalize task information
-        task_info_adapt = (task_info-task_info.mean()) / \
-            (task_info.std() + 1e-12)
         target_rating = target_rating.to(self.device)
 
         # inner loop optimization
@@ -155,6 +152,10 @@ class MAML:
             outputs = phi_model(inputs)
             loss = loss_fn(outputs, target_rating)
             if self.use_adaptive_loss:
+                # normalize task information
+                task_info_step = torch.cat((loss.reshape(1), task_info))
+                task_info_adapt = (task_info_step-task_info_step.mean()) / \
+                    (task_info_step.std() + 1e-12)
                 loss += self.loss_network(task_info_adapt)[0]
             loss.backward()
             optimizer.step()
