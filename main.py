@@ -49,6 +49,10 @@ class MAML:
         self.meta_optimizer = optim.SGD(
             self.model.parameters(), lr=self._outer_lr)
 
+        self.meta_lr_scheduler = optim.lr_scheduler.\
+            MultiStepLR(self.meta_optimizer, milestones=[
+                        100, 200, 450], gamma=0.1)
+
         self._train_step = 0
 
         self.use_adaptive_loss = args.use_adaptive_loss
@@ -62,7 +66,20 @@ class MAML:
             self.loss_lr = 0.001
             self.loss_optimizer = optim.Adam(
                 self.loss_network.parameters(), lr=self.loss_lr)
-
+            self.loss_lr_scheduler = optim.lr_scheduler.\
+                MultiStepLR(self.loss_optimizer, milestones=[
+                            100, 200, 450], gamma=0.7)
+            self.task_info_network = nn.Sequential(
+                nn.Linear(8, 8),
+                nn.ReLU(),
+                nn.Linear(8, 1),
+            ).to(self.device)
+            self.task_info_lr = 0.0005
+            self.task_info_optimizer = optim.Adam(
+                self.task_info_network.parameters(), lr=self.task_info_lr)
+            self.task_info_lr_scheduler = optim.lr_scheduler.\
+                MultiStepLR(self.task_info_optimizer, milestones=[
+                            100, 200, 450], gamma=0.7)
         print("Finished initialization")
 
     # per step loss weight for multi step loss function
@@ -156,7 +173,8 @@ class MAML:
                 task_info_step = torch.cat((loss.reshape(1), task_info))
                 task_info_adapt = (task_info_step-task_info_step.mean()) / \
                     (task_info_step.std() + 1e-5)
-                loss += self.loss_network(task_info_adapt)[0]
+                weight = self.task_info_network(task_info)[0]
+                loss += weight * self.loss_network(task_info_adapt)[0]
             loss.backward()
             optimizer.step()
 
@@ -223,8 +241,12 @@ class MAML:
         # Update meta parameters
         if train:
             self.meta_optimizer.step()
+            self.meta_lr_scheduler.step()
             if self.use_adaptive_loss:
                 self.loss_optimizer.step()
+                self.loss_lr_scheduler.step()
+                self.task_info_lr_scheduler.step()
+                self.task_info_lr_scheduler.step()
 
         outer_loss = np.mean(outer_loss_batch)
         mae_loss = np.mean(mae_loss_batch)
