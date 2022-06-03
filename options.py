@@ -47,5 +47,7 @@ parser.add_argument('--multi_step_loss_num_epochs', type=int, default=200,
                     help='number of epochs using multi step loss')
 parser.add_argument('--use_multi_step', type=bool, default=True,
                     help='use multi step loss or not')
+parser.add_argument('--use_adaptive_loss', type=bool, default=True,
+                    help='use adaptive loss or pure maml')
 
 args = parser.parse_args()
