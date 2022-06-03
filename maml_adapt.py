@@ -1,5 +1,5 @@
 from models.bert import BERTModel
-from dataloader import DataLoader
+from dataloader_adapt import DataLoader
 from options import args
 
 import torch
@@ -25,8 +25,8 @@ class MAML:
 
         self.args = args
         self.batch_size = args.batch_size
-        self.num_users_per_task = args.num_users_per_task
-        self.dataloader = DataLoader(args.data_path)
+        self.dataloader = DataLoader(
+            file_path=args.data_path, max_sequence_length=args.seq_len, min_sequence=5, samples_per_task=args.num_samples)
         self.args.num_users = self.dataloader.num_users
         self.args.num_items = self.dataloader.num_items
 
@@ -49,9 +49,43 @@ class MAML:
 
         self._train_step = 0
 
+        self.loss_network = nn.Sequential(
+            nn.Linear(9, 9),
+            nn.ReLU(),
+            nn.Linear(9, 1),
+        )
+        self.loss_lr = 0.01
+        self.loss_optimizer = optim.Adam(
+            self.loss_network.parameters(), lr=self.loss_lr)
+
         print("Finished initialization")
 
-    def _inner_loop(self, theta, support_data):
+    def get_per_step_loss_importance_vector(self):
+        """
+        Generates a tensor of dimensionality (num_inner_loop_steps) indicating the importance of each step's target
+        loss towards the optimization loss.
+        :return: A tensor to be used to compute the weighted average of the loss, useful for
+        the MSL (Multi Step Loss) mechanism.
+        """
+        loss_weights = np.ones(shape=(self._num_inner_steps)) * (
+            1.0 / self._num_inner_steps)
+        decay_rate = 1.0 / self._num_inner_steps / \
+            self.args.multi_step_loss_num_epochs
+        min_value_for_non_final_losses = 0.03 / self._num_inner_steps
+        for i in range(len(loss_weights) - 1):
+            curr_value = np.maximum(
+                loss_weights[i] - (self._train_step * decay_rate), min_value_for_non_final_losses)
+            loss_weights[i] = curr_value
+
+        curr_value = np.minimum(
+            loss_weights[-1] + (self._train_step *
+                                (self._num_inner_steps - 1) * decay_rate),
+            1.0 - ((self._num_inner_steps - 1) * min_value_for_non_final_losses))
+        loss_weights[-1] = curr_value
+        loss_weights = torch.Tensor(loss_weights).to(device=self.device)
+        return loss_weights
+
+    def _inner_loop(self, theta, support_data, task_info):
         """Computes the adapted network parameters via the MAML inner loop.
 
         Args:
@@ -69,16 +103,21 @@ class MAML:
         phi_model = copy.deepcopy(theta)
         optimizer = optim.SGD(phi_model.parameters(), lr=self._inner_lr)
 
+        user_id, product_history, target_product_id,  product_history_ratings, target_rating = support_data
+        inputs = user_id.to(self.device), product_history.to(
+            self.device), \
+            target_product_id.to(
+                self.device),  product_history_ratings.to(self.device)
+        task_info = task_info.to(self.device)
+        target_rating = target_rating.to(self.device)
         # inner loop optimization
         for _ in range(self._num_inner_steps + 1):
-            user_id, product_history, target_product_id,  product_history_ratings, target_rating = support_data
-            inputs = user_id.to(self.device), product_history.to(
-                self.device), \
-                target_product_id.to(
-                    self.device),  product_history_ratings.to(self.device)
             optimizer.zero_grad()
             outputs = phi_model(inputs)
-            loss = loss_fn(outputs, target_rating.to(self.device))
+            loss_val = loss_fn(outputs, target_rating)
+            loss_task_info = torch.cat(
+                [loss_val.reshape(1), task_info])
+            loss = self.loss_network(loss_task_info)
             loss.backward()
             optimizer.step()
         phi = phi_model.state_dict()
@@ -105,9 +144,10 @@ class MAML:
         mae_loss_fn = nn.L1Loss()
         optimizer = optim.SGD(theta.parameters(), lr=self._outer_lr)
         optimizer.zero_grad()
+        self.loss_optimizer.zero_grad()
         for idx, task in enumerate(tqdm(task_batch)):
-            support, query = task
-            phi = self._inner_loop(theta, support)  # do inner loop
+            support, query, task_info = task
+            phi = self._inner_loop(theta, support, task_info)  # do inner loop
             self.model.load_state_dict(phi)
             user_id, product_history, target_product_id,  product_history_ratings, target_rating = query
             inputs = user_id.to(self.device), product_history.to(
@@ -140,6 +180,7 @@ class MAML:
         # Update model with new theta
         if train:
             optimizer.step()
+            self.loss_optimizer.step()
             self.model.load_state_dict(theta.state_dict())
 
         outer_loss = np.mean(outer_loss_batch)
@@ -160,11 +201,11 @@ class MAML:
         print(f"Starting MAML training at iteration {self._train_step}")
         writer = SummaryWriter()
         val_batches = self.dataloader.generate_task(
-            mode="valid", batch_size=50, N=self.num_users_per_task)
+            mode="valid", batch_size=50)
         for i in range(1, train_steps+1):
             self._train_step += 1
             train_task = self.dataloader.generate_task(
-                mode="train", batch_size=self.batch_size, N=self.num_users_per_task)
+                mode="train", batch_size=self.batch_size)
 
             outer_loss, mae_loss = self._outer_loop(
                 train_task, train=True)

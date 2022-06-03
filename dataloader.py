@@ -15,7 +15,7 @@ class DataLoader():
     def __init__(self, file_path, mode="ml-1m"):
         os.makedirs(os.path.join(os.path.abspath(
             '.'), ROOT_FOLDER), exist_ok=True)
-        self.sequence_length = 5
+        self.sequence_length = 10
         self.df, self.umap, self.smap = self.preprocessing(file_path, mode)
         self.train_set, self.valid_set = self.split_data(self.df)
         self.num_items = len(self.smap)
@@ -120,6 +120,21 @@ class DataLoader():
         return train_data, test_data
 
     def create_sequences(self, values, window_size, step_size):
+        sequences = []
+        start_index = 0
+        while True:
+            end_index = start_index + window_size
+            seq = values[start_index:end_index]
+            if len(seq) < window_size:
+                seq = values[-window_size:]
+                if len(seq) == window_size:
+                    sequences.append(seq)
+                break
+            sequences.append(seq)
+            start_index += step_size
+        return sequences
+
+    def create_sub_sequences(self, values, window_size, step_size):
         sequences = []
         start_index = 0
         while True:

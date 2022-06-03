@@ -21,7 +21,7 @@ parser.add_argument('--test', default=False, action='store_true',
 parser.add_argument('--checkpoint_step', type=int, default=-1,
                     help=('checkpoint iteration to load for resuming '
                           'training, or for evaluation (-1 is ignored)'))
-parser.add_argument('--seq_len', type=int, default=4,
+parser.add_argument('--seq_len', type=int, default=10,
                     help='sequence length')
 parser.add_argument('--bert_num_blocks', type=int, default=2,
                     help='number of bert blocks')
@@ -41,5 +41,9 @@ parser.add_argument('--batch_size', type=int, default=25,
                     help='batch size')
 parser.add_argument('--num_users_per_task', type=int, default=2,
                     help='number of users per task')
+parser.add_argument('--num_samples', type=int, default=25,
+                    help='number of subsamples')
+parser.add_argument('--multi_step_loss_num_epochs', type=int, default=200,
+                    help='number of epochs using multi step loss')
 
 args = parser.parse_args()
