@@ -18,11 +18,15 @@ parser.add_argument('--checkpoint_step', type=int, default=-1,
 # hyperparmeters for training
 parser.add_argument('--num_inner_steps', type=int, default=5,
                     help='number of inner-loop updates')
-parser.add_argument('--inner_lr', type=float, default=0.002,
+parser.add_argument('--inner_lr', type=float, default=1e-3,
                     help='inner-loop learning rate initialization')
-parser.add_argument('--outer_lr', type=float, default=0.001,
+parser.add_argument('--outer_lr', type=float, default=2e-4,
                     help='outer-loop learning rate')
-parser.add_argument('--num_train_iterations', type=int, default=500,
+parser.add_argument('--loss_lr', type=float, default=1e-3,
+                    help='outer-loop learning rate')
+parser.add_argument('--task_info_lr', type=float, default=1e-3,
+                    help='outer-loop learning rate')
+parser.add_argument('--num_train_iterations', type=int, default=5000,
                     help='number of outer-loop updates to train for')
 
 # about bert model
@@ -48,11 +52,11 @@ parser.add_argument('--batch_size', type=int, default=25,
                     help='batch size')
 parser.add_argument('--num_users_per_task', type=int, default=2,
                     help='number of users per task')
-parser.add_argument('--num_samples', type=int, default=25,
+parser.add_argument('--num_samples', type=int, default=32,
                     help='number of subsamples')
 
 # training options
-parser.add_argument('--multi_step_loss_num_epochs', type=int, default=200,
+parser.add_argument('--multi_step_loss_num_epochs', type=int, default=1000,
                     help='number of epochs using multi step loss')
 parser.add_argument('--use_multi_step', type=bool, default=True,
                     help='use multi step loss or not')

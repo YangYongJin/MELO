@@ -45,13 +45,15 @@ class MAML:
         self._num_inner_steps = args.num_inner_steps
         self._inner_lr = args.inner_lr
         self._outer_lr = args.outer_lr
+        self._loss_lr = args.loss_lr
+        self._task_info_lr = args.task_info_lr
 
         self.meta_optimizer = optim.SGD(
             self.model.parameters(), lr=self._outer_lr)
 
         self.meta_lr_scheduler = optim.lr_scheduler.\
             MultiStepLR(self.meta_optimizer, milestones=[
-                        100, 200, 450], gamma=0.1)
+                        500, 1500, 3000], gamma=0.1)
 
         self._train_step = 0
 
@@ -63,23 +65,21 @@ class MAML:
                 nn.ReLU(),
                 nn.Linear(9, 1),
             ).to(self.device)
-            self.loss_lr = 0.001
             self.loss_optimizer = optim.Adam(
-                self.loss_network.parameters(), lr=self.loss_lr)
+                self.loss_network.parameters(), lr=self._loss_lr)
             self.loss_lr_scheduler = optim.lr_scheduler.\
                 MultiStepLR(self.loss_optimizer, milestones=[
-                            100, 200, 450], gamma=0.7)
+                            500, 1500, 3000], gamma=0.7)
             self.task_info_network = nn.Sequential(
                 nn.Linear(8, 8),
                 nn.ReLU(),
                 nn.Linear(8, 1),
             ).to(self.device)
-            self.task_info_lr = 0.0005
             self.task_info_optimizer = optim.Adam(
-                self.task_info_network.parameters(), lr=self.task_info_lr)
+                self.task_info_network.parameters(), lr=self._task_info_lr)
             self.task_info_lr_scheduler = optim.lr_scheduler.\
                 MultiStepLR(self.task_info_optimizer, milestones=[
-                            100, 200, 450], gamma=0.7)
+                            500, 1500, 3000], gamma=0.7)
         print("Finished initialization")
 
     # per step loss weight for multi step loss function
