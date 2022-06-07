@@ -198,7 +198,6 @@ class MAML:
         return query_loss, mae_loss
 
     # outer loop
-
     def _outer_loop(self, task_batch, train=None):
         """Computes the MAML loss and metrics on a batch of tasks.
 
@@ -207,13 +206,14 @@ class MAML:
             train (bool): whether we are training or evaluating
 
         Returns:
-            outer_loss: mean query MSE loss over the batch
+            mse_loss: mean query MSE loss over the batch
+            rmse_loss: mean query RMSE loss over the batch
             mae_loss: mean query MAE loss over the batch
         """
         # get importance weight
         imp_vecs = self.get_per_step_loss_importance_vector()
 
-        outer_loss_batch = []
+        mse_loss_batch = []
         mae_loss_batch = []
 
         self.meta_optimizer.zero_grad()
@@ -235,8 +235,8 @@ class MAML:
             loss, mae_loss = self._inner_loop(
                 support, task_info, query_inputs, query_target_rating, imp_vecs, train)  # do inner loop
 
+            mse_loss_batch.append(loss.detach().to("cpu").item())
             mae_loss_batch.append(mae_loss.detach().to("cpu").item())
-            outer_loss_batch.append(loss.detach().to("cpu").item())
 
         # Update meta parameters
         if train:
@@ -248,10 +248,11 @@ class MAML:
                 self.task_info_lr_scheduler.step()
                 self.task_info_lr_scheduler.step()
 
-        outer_loss = np.mean(outer_loss_batch)
+        mse_loss = np.mean(mse_loss_batch)
+        rmse_loss = np.sqrt(mse_loss)
         mae_loss = np.mean(mae_loss_batch)
 
-        return outer_loss, mae_loss
+        return mse_loss, rmse_loss, mae_loss
 
     def train(self, train_steps):
         """Train the MAML.
@@ -272,7 +273,7 @@ class MAML:
             train_task = self.dataloader.generate_task(
                 mode="train", batch_size=self.batch_size)
 
-            outer_loss, mae_loss = self._outer_loop(
+            mse_loss, rmse_loss, mae_loss = self._outer_loop(
                 train_task, train=True)
 
             if self._train_step % SAVE_INTERVAL == 0:
@@ -281,25 +282,26 @@ class MAML:
             if i % LOG_INTERVAL == 0:
                 print(
                     f'Iteration {self._train_step}: '
-                    f'MSE loss: {outer_loss:.3f} | '
                     f'MAE loss: {mae_loss:.3f} | '
+                    f'RMSE loss: {rmse_loss:.3f} | '
+                    f'MSE loss: {mse_loss:.3f} | '
                 )
-                writer.add_scalar(
-                    "train/MSEloss", outer_loss, self._train_step)
+                writer.add_scalar("train/MSEloss", mse_loss, self._train_step)
+                writer.add_scalar("train/RMSEloss", rmse_loss, self._train_step)
                 writer.add_scalar("train/MAEloss", mae_loss, self._train_step)
 
             if i % VAL_INTERVAL == 0:
-                outer_loss, mae_loss = self._outer_loop(
+                mse_loss, rmse_loss, mae_loss = self._outer_loop(
                     val_batches, train=False)
 
                 print(
-                    f'\t-Validation: '
-                    f'Val MSE loss: {outer_loss:.3f} | '
+                    f'\tValidation: '
+                    f'Val MSE loss: {mse_loss:.3f} | '
+                    f'Val RMSE loss: {rmse_loss:.3f} | '
                     f'Val MAE loss: {mae_loss:.3f} | '
                 )
-
-                writer.add_scalar(
-                    "valid/MSEloss", outer_loss, self._train_step)
+                writer.add_scalar("valid/MSEloss", mse_loss, self._train_step)
+                writer.add_scalar("valid/RMSEloss", rmse_loss, self._train_step)
                 writer.add_scalar("valid/MAEloss", mae_loss, self._train_step)
         writer.close()
 
