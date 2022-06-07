@@ -12,12 +12,12 @@ Reference code: https://github.com/jaywonchung/BERT4Rec-VAE-Pytorch
 ```bash 
 python main.py
 ```
-*maml without multi step loss
+* maml without multi step loss
 ```bash 
 python main.py --use_multi_step=False
 ```
 
-*normal FO-maml(no adaptive loss)
+* normal FO-maml(no adaptive loss)
 ```bash 
 python main.py --use_multi_step=False --use_adaptive_loss=False
 ```
