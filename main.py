@@ -119,10 +119,11 @@ class MAML:
 
         # update meta loss function
         for k, v in zip(self.model.parameters(), phi_model.parameters()):
-            if k.grad == None:
-                k.grad = imp_weight*(v.grad)
-            else:
-                k.grad += imp_weight*(v.grad)
+            if k.requires_grad == True:
+                if k.grad == None:
+                    k.grad = imp_weight*(v.grad)
+                else:
+                    k.grad += imp_weight*(v.grad)
         mae_loss = mae_loss_fn(outputs, query_target_rating)
         return query_loss, mae_loss
 
@@ -168,6 +169,7 @@ class MAML:
             optimizer.zero_grad()
             outputs = phi_model(inputs)
             loss = loss_fn(outputs, target_rating)
+
             if self.use_adaptive_loss:
                 # normalize task information
                 task_info_step = torch.cat((loss.reshape(1), task_info))
@@ -331,7 +333,8 @@ class MAML:
         target_path = os.path.join(self._save_dir, f"{checkpoint_step}")
         print("Loading checkpoint from", target_path)
         try:
-            self.model.load_state_dict(torch.load(target_path))
+            self.model.load_state_dict(torch.load(
+                target_path, map_location=self.device))
 
         except:
             raise ValueError(
@@ -341,6 +344,21 @@ class MAML:
         # Save a model to 'save_dir'
         torch.save(self.model.state_dict(),
                    os.path.join(self._save_dir, f"{self._train_step}"))
+
+    def load_pretrained_bert(self, filename):
+        pretrained_path = os.path.join('./pretrained', filename)
+        print("Loading Pretrained Model")
+        try:
+            self.model.bert.load_state_dict(torch.load(
+                pretrained_path, map_location=self.device))
+
+        except:
+            raise ValueError(
+                f'No Pretrained Model or something goes wrong.')
+
+    def freeze_bert(self):
+        for param in self.model.bert.parameters():
+            param.requires_grad = False
 
 
 def main(args):
@@ -353,7 +371,15 @@ def main(args):
         args
     )
 
+    if args.load_pretrained:
+        dir = os.listdir('./pretrained')
+        if len(dir) != 0:
+            maml.load_pretrained_bert(dir[0])
+            if args.freeze_bert:
+                maml.freeze_bert()
+
     if args.checkpoint_step > -1:
+        maml._train_step = args.checkpoint_step
         maml.load(args.checkpoint_step)
     else:
         print('Checkpoint loading skipped.')

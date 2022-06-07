@@ -20,7 +20,7 @@ class Pretrain:
         self.args = args
         self.batch_size = args.batch_size
         self.dataloader = DataLoader(
-            file_path=args.data_path, max_sequence_length=args.seq_len, min_sequence=5, samples_per_task=args.num_samples, pretraining=True, pretraining_batch_size=128)
+            file_path=args.data_path, max_sequence_length=args.seq_len, min_sequence=5, samples_per_task=args.num_samples, pretraining=True, pretraining_batch_size=args.pretraining_batch_size)
         self.pretraining_loader = self.dataloader.pretraining_loader
         self.args.num_users = self.dataloader.num_users
         self.args.num_items = self.dataloader.num_items
@@ -37,15 +37,19 @@ class Pretrain:
         os.makedirs(self._save_dir, exist_ok=True)
 
         # whether to use multi step loss
-        self._lr = 0.01
-        self.optimizer = optim.Adam(
-            self.model.parameters(), lr=self._lr)
+        self._lr = args.pretraining_lr
+        self.optimizer = optim.Adam([
+            {'params': self.model.bert.parameters()},
+            {'params': self.model.dim_reduct.parameters(), 'lr': 1e-2},
+            {'params': self.model.out.parameters(), 'lr': 1e-2}
+        ], lr=self._lr)
+
         self.loss_fn = nn.MSELoss()
         self.mae_loss_fn = nn.L1Loss()
 
         self.lr_scheduler = optim.lr_scheduler.\
             MultiStepLR(self.optimizer, milestones=[
-                        1, 4, 7], gamma=0.1)
+                        400, 700, 900], gamma=0.1)
 
         self._train_step = 0
 
@@ -100,7 +104,8 @@ class Pretrain:
         target_path = os.path.join(self._save_dir, f"{checkpoint_step}")
         print("Loading checkpoint from", target_path)
         try:
-            self.model.bert.load_state_dict(torch.load(target_path))
+            self.model.bert.load_state_dict(
+                torch.load(target_path, map_location=self.device))
 
         except:
             raise ValueError(
@@ -116,11 +121,12 @@ def main(args):
     pretrain_module = Pretrain(args)
 
     if args.checkpoint_step > -1:
+        pretrain_module._train_step = args.checkpoint_step
         pretrain_module.load(args.checkpoint_step)
     else:
         print('Checkpoint loading skipped.')
 
-    pretrain_module.train(epochs=500)
+    pretrain_module.train(epochs=args.pretrain_epochs)
 
 
 if __name__ == '__main__':
