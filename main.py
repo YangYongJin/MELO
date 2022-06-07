@@ -245,7 +245,7 @@ class MAML:
             if self.use_adaptive_loss:
                 self.loss_optimizer.step()
                 self.loss_lr_scheduler.step()
-                self.task_info_lr_scheduler.step()
+                self.task_info_optimizer.step()
                 self.task_info_lr_scheduler.step()
 
         mse_loss = np.mean(mse_loss_batch)
@@ -287,7 +287,8 @@ class MAML:
                     f'MSE loss: {mse_loss:.3f} | '
                 )
                 writer.add_scalar("train/MSEloss", mse_loss, self._train_step)
-                writer.add_scalar("train/RMSEloss", rmse_loss, self._train_step)
+                writer.add_scalar("train/RMSEloss",
+                                  rmse_loss, self._train_step)
                 writer.add_scalar("train/MAEloss", mae_loss, self._train_step)
 
             if i % VAL_INTERVAL == 0:
@@ -301,7 +302,8 @@ class MAML:
                     f'Val MAE loss: {mae_loss:.3f} | '
                 )
                 writer.add_scalar("valid/MSEloss", mse_loss, self._train_step)
-                writer.add_scalar("valid/RMSEloss", rmse_loss, self._train_step)
+                writer.add_scalar("valid/RMSEloss",
+                                  rmse_loss, self._train_step)
                 writer.add_scalar("valid/MAEloss", mae_loss, self._train_step)
         writer.close()
 
