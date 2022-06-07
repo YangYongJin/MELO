@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import pandas as pd
 import shutil
+import torch.utils.data as data
 import tempfile
 import os
 import wget
@@ -12,7 +13,7 @@ ROOT_FOLDER = "Data"
 
 
 class DataLoader():
-    def __init__(self, file_path, max_sequence_length=10, min_sequence=5, samples_per_task=25, mode="ml-1m"):
+    def __init__(self, file_path, max_sequence_length=10, min_sequence=5, samples_per_task=25, mode="ml-1m", pretraining=False, pretraining_batch_size=None):
         os.makedirs(os.path.join(os.path.abspath(
             '.'), ROOT_FOLDER), exist_ok=True)
         self.max_sequence_length = max_sequence_length
@@ -23,6 +24,9 @@ class DataLoader():
         self.num_items = len(self.smap)
         self.num_users = len(self.umap)
         self.total_data_num = len(self.df)
+        if pretraining and pretraining_batch_size != None:
+            self.pretraining_loader = self.make_pretraining_dataloader(
+                pretraining_batch_size)
 
     def preprocessing(self, file_path, min_sequence, mode="ml-1m"):
         print("Preprocessing Started")
@@ -235,6 +239,60 @@ class DataLoader():
 
         return tasks
 
+    def make_pretraining_dataloader(self, batch_size=128):
+        dataset = SequenceDataset(self.df, self.max_sequence_length)
+        dataloader = torch.utils.data.DataLoader(
+            dataset,
+            batch_size=batch_size,
+            shuffle=True
+        )
+
+        return dataloader
+
+
+class SequenceDataset(data.Dataset):
+    """Movie dataset."""
+
+    def __init__(
+        self, df, max_len
+    ):
+        """
+        Args:
+            csv_file (string): Path to the csv file with user,past,future.
+        """
+        self.ratings_frame = df
+        self.max_len = max_len
+
+    def __len__(self):
+        return len(self.ratings_frame)
+
+    def preprocessing(self, product_ids, ratings):
+        seq_len = len(product_ids)
+        window_size = np.random.randint(2, self.max_len+1)
+        start_idx = np.random.randint(0, seq_len - window_size + 1)
+        product_ids_f = [0] * (self.max_len - window_size) + \
+            list(product_ids[start_idx: start_idx+window_size])
+        ratings_f = [0] * (self.max_len - window_size) + \
+            list(ratings[start_idx: start_idx+window_size])
+        product_ids_f = torch.LongTensor(product_ids_f)
+        ratings_f = torch.FloatTensor(ratings_f)
+        return product_ids_f, ratings_f
+
+    def __getitem__(self, idx):
+        data = self.ratings_frame.iloc[idx]
+        user_id = torch.tensor(data.user_id).reshape(1)
+        product_ids = data.product_id
+        ratings = data.rating
+
+        product_ids, ratings = self.preprocessing(
+            product_ids, ratings)
+
+        product_history = product_ids[:-1]
+        target_product_id = product_ids[-1:][0].reshape(1)
+        product_history_ratings = ratings[:-1]
+        target_product_rating = ratings[-1:][0].reshape(1)
+
+        return (user_id, product_history, target_product_id,  product_history_ratings), target_product_rating
 
 # dataloader = DataLoader('./Data/ml-1m/ratings.dat')
 # tasks = dataloader.generate_task()

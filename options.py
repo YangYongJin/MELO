@@ -63,4 +63,16 @@ parser.add_argument('--use_multi_step', type=bool, default=True,
 parser.add_argument('--use_adaptive_loss', type=bool, default=True,
                     help='use adaptive loss or pure maml')
 
+# pretraining options
+parser.add_argument('--pretraining_batch_size', type=int, default=128,
+                    help='batch size during pretraining')
+parser.add_argument('--pretrain_epochs', type=int, default=1000,
+                    help='the number of epochs for pretraining')
+parser.add_argument('--pretraining_lr', type=float, default=0.0001,
+                    help='learning rate during pretraining')
+parser.add_argument('--load_pretrained', type=bool, default=True,
+                    help='load pretrained model or not')
+parser.add_argument('--freeze_bert', type=bool, default=True,
+                    help='freeze bert model or not')
+
 args = parser.parse_args()
