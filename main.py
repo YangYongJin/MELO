@@ -333,8 +333,12 @@ class MAML:
         target_path = os.path.join(self._save_dir, f"{checkpoint_step}")
         print("Loading checkpoint from", target_path)
         try:
+            if torch.cuda.is_available():
+                def map_location(storage, loc): return storage.cuda()
+            else:
+                map_location = 'cpu'
             self.model.load_state_dict(torch.load(
-                target_path, map_location=self.device))
+                target_path, map_location=map_location))
 
         except:
             raise ValueError(
@@ -349,8 +353,12 @@ class MAML:
         pretrained_path = os.path.join('./pretrained', filename)
         print("Loading Pretrained Model")
         try:
+            if torch.cuda.is_available():
+                def map_location(storage, loc): return storage.cuda()
+            else:
+                map_location = 'cpu'
             self.model.bert.load_state_dict(torch.load(
-                pretrained_path, map_location=self.device))
+                pretrained_path, map_location=map_location))
 
         except:
             raise ValueError(
