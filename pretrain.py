@@ -100,7 +100,7 @@ class Pretrain:
         target_path = os.path.join(self._save_dir, f"{checkpoint_step}")
         print("Loading checkpoint from", target_path)
         try:
-            self.model.load_state_dict(torch.load(target_path))
+            self.model.bert.load_state_dict(torch.load(target_path))
 
         except:
             raise ValueError(
@@ -108,7 +108,7 @@ class Pretrain:
 
     def _save_model(self):
         # Save a model to 'save_dir'
-        torch.save(self.model.state_dict(),
+        torch.save(self.model.bert.state_dict(),
                    os.path.join(self._save_dir, f"{self._train_step}"))
 
 
