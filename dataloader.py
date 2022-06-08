@@ -24,9 +24,13 @@ class DataLoader():
         self.num_items = len(self.smap)
         self.num_users = len(self.umap)
         self.total_data_num = len(self.df)
+
+        # pretraining set
         if pretraining and pretraining_batch_size != None:
-            self.pretraining_loader = self.make_pretraining_dataloader(
-                pretraining_batch_size)
+            self.pretraining_train_loader = self.make_pretraining_dataloader(
+                self.train_set, pretraining_batch_size)
+            self.pretraining_valid_loader = self.make_pretraining_dataloader(
+                self.valid_set, pretraining_batch_size)
 
     def preprocessing(self, file_path, min_sequence, mode="ml-1m"):
         print("Preprocessing Started")
@@ -239,8 +243,8 @@ class DataLoader():
 
         return tasks
 
-    def make_pretraining_dataloader(self, batch_size=128):
-        dataset = SequenceDataset(self.df, self.max_sequence_length)
+    def make_pretraining_dataloader(self, df, batch_size=128):
+        dataset = SequenceDataset(df, self.max_sequence_length)
         dataloader = torch.utils.data.DataLoader(
             dataset,
             batch_size=batch_size,

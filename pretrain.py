@@ -12,6 +12,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 SAVE_INTERVAL = 100
 LOG_INTERVAL = 1
+VAL_INTERVAL = 10
 
 
 class Pretrain:
@@ -21,7 +22,8 @@ class Pretrain:
         self.batch_size = args.batch_size
         self.dataloader = DataLoader(
             file_path=args.data_path, max_sequence_length=args.seq_len, min_sequence=5, samples_per_task=args.num_samples, pretraining=True, pretraining_batch_size=args.pretraining_batch_size)
-        self.pretraining_loader = self.dataloader.pretraining_loader
+        self.pretraining_train_loader = self.dataloader.pretraining_train_loader
+        self.pretraining_valid_loader = self.dataloader.pretraining_valid_loader
         self.args.num_users = self.dataloader.num_users
         self.args.num_items = self.dataloader.num_items
 
@@ -47,11 +49,36 @@ class Pretrain:
         self.loss_fn = nn.MSELoss()
         self.mae_loss_fn = nn.L1Loss()
 
+        self.best_valid_rmse_loss = 987654321
+        self.best_step = 0
+
         self.lr_scheduler = optim.lr_scheduler.\
             MultiStepLR(self.optimizer, milestones=[
                         400, 700, 900], gamma=0.1)
 
         self._train_step = 0
+
+    def epoch_step(self, data_loader, train=True):
+        for input, target_rating in tqdm(data_loader):
+            user_id, product_history, target_product_id,  product_history_ratings = input
+
+            x_inputs = (user_id.to(self.device), product_history.to(
+                self.device),
+                target_product_id.to(
+                    self.device),  product_history_ratings.to(self.device))
+            target_rating = target_rating.to(self.device)
+            self.optimizer.zero_grad()
+            outputs = self.model(
+                x_inputs)
+            loss = self.loss_fn(outputs, target_rating)
+            if train:
+                loss.backward()
+                self.optimizer.step()
+            mae_loss = self.mae_loss_fn(outputs, target_rating).item()
+            mse_loss = loss.detach().item()
+            rmse_loss = torch.sqrt(loss).detach().item()
+
+            return mse_loss, mae_loss, rmse_loss
 
     def train(self, epochs):
         """Train the MAML.
@@ -65,37 +92,40 @@ class Pretrain:
         """
         print(f"Starting MAML training at iteration {self._train_step}")
         writer = SummaryWriter(log_dir=self._log_dir)
-        for _ in range(epochs):
-            for input, target_rating in tqdm(self.pretraining_loader):
-                user_id, product_history, target_product_id,  product_history_ratings = input
-
-                x_inputs = (user_id.to(self.device), product_history.to(
-                    self.device),
-                    target_product_id.to(
-                        self.device),  product_history_ratings.to(self.device))
-                target_rating = target_rating.to(self.device)
-                self.optimizer.zero_grad()
-                outputs = self.model(
-                    x_inputs)
-                loss = self.loss_fn(outputs, target_rating)
-                loss.backward()
-                self.optimizer.step()
-                mae_loss = self.mae_loss_fn(outputs, target_rating).item()
-                mse_loss = loss.detach().item()
+        for epoch in range(epochs):
+            mse_loss, mae_loss, rmse_loss = self.epoch_step(
+                self.pretraining_train_loader)
 
             if self._train_step % LOG_INTERVAL == 0:
                 print(
                     f'Epoch {self._train_step}: '
-                    f'MAE loss: {mae_loss:.3f} | '
                     f'MSE loss: {mse_loss:.3f} | '
+                    f'RMSE loss: {rmse_loss:.3f} | '
+                    f'MAE loss: {mae_loss:.3f} | '
                 )
                 writer.add_scalar(
                     "train/MSEloss", mse_loss, self._train_step)
                 writer.add_scalar(
                     "train/MAEloss", mae_loss, self._train_step)
 
-            if self._train_step % SAVE_INTERVAL == 0:
-                self._save_model()
+            if epoch % VAL_INTERVAL == 0:
+                self.epoch_step(self.pretraining_valid_loader, train=False)
+
+                print(
+                    f'\tValidation: '
+                    f'Val MSE loss: {mse_loss:.3f} | '
+                    f'Val RMSE loss: {rmse_loss:.3f} | '
+                    f'Val MAE loss: {mae_loss:.3f} | '
+                )
+
+                # Save the best model wrt valid rmse loss
+                if self.best_valid_rmse_loss > rmse_loss:
+                    self.best_valid_rmse_loss = rmse_loss
+                    self.best_step = epoch
+                    self._save_model()
+                    print(
+                        f'........Model saved (step: {self.best_step} | RMSE loss: {rmse_loss:.3f})')
+
             self._train_step += 1
             self.lr_scheduler.step()
         writer.close()
