@@ -24,7 +24,7 @@ class MAML:
         self.args = args
         self.batch_size = args.batch_size
         self.dataloader = DataLoader(
-            file_path=args.data_path, max_sequence_length=args.seq_len, min_sequence=5, samples_per_task=args.num_samples)
+            file_path=args.data_path, max_sequence_length=args.seq_len, min_sequence=5, samples_per_task=args.num_samples, default_rating=args.default_rating)
         self.args.num_users = self.dataloader.num_users
         self.args.num_items = self.dataloader.num_items
 
@@ -48,8 +48,17 @@ class MAML:
         self._loss_lr = args.loss_lr
         self._task_info_lr = args.task_info_lr
 
-        self.meta_optimizer = optim.SGD(
-            self.model.parameters(), lr=self._outer_lr)
+        self.normalize_loss = self.args.normalize_loss
+
+        if args.freeze_bert:
+            self.meta_optimizer = optim.Adam(
+                self.model.parameters(), lr=self._outer_lr)
+        else:
+            self.meta_optimizer = optim.Adam([
+                {'params': self.model.bert.parameters()},
+                {'params': self.model.dim_reduct.parameters(), 'lr': 1e-3},
+                {'params': self.model.out.parameters(), 'lr': 1e-3}
+            ], lr=self._outer_lr)
 
         self.meta_lr_scheduler = optim.lr_scheduler.\
             MultiStepLR(self.meta_optimizer, milestones=[
@@ -118,7 +127,19 @@ class MAML:
         # get gradients
         optimizer.zero_grad()
         outputs = phi_model(query_inputs)
-        query_loss = loss_fn(outputs, query_target_rating)
+
+        # normalized version
+        if self.normalize_loss:
+            query_loss = loss_fn(outputs, query_target_rating/5.0)
+            mae_loss = mae_loss_fn(
+                outputs.clone().detach()*5, query_target_rating)
+            query_output_loss = loss_fn(
+                outputs.clone().detach()*5, query_target_rating)
+        else:
+            query_loss = loss_fn(outputs, query_target_rating)
+            mae_loss = mae_loss_fn(
+                outputs.clone().detach(), query_target_rating)
+            query_output_loss = query_loss.clone().detach()
         query_loss.backward()
 
         # update meta loss function
@@ -128,8 +149,8 @@ class MAML:
                     k.grad = imp_weight*(v.grad)
                 else:
                     k.grad += imp_weight*(v.grad)
-        mae_loss = mae_loss_fn(outputs, query_target_rating)
-        return query_loss, mae_loss
+
+        return query_output_loss, mae_loss
 
     # inner loop optimization
 
@@ -172,7 +193,10 @@ class MAML:
             # update phi(inner loop parameter)
             optimizer.zero_grad()
             outputs = phi_model(inputs)
-            loss = loss_fn(outputs, target_rating)
+            if self.normalize_loss:
+                loss = loss_fn(outputs, target_rating/5.0)
+            else:
+                loss = loss_fn(outputs, target_rating)
 
             if self.use_adaptive_loss:
                 # normalize task information
@@ -181,6 +205,7 @@ class MAML:
                     (task_info_step.std() + 1e-5)
                 weight = self.task_info_network(task_info)[0]
                 loss += weight * self.loss_network(task_info_adapt)[0]
+
             loss.backward()
             optimizer.step()
 
@@ -404,6 +429,9 @@ def main(args):
             maml.load_pretrained_bert(dir[0])
             if args.freeze_bert:
                 maml.freeze_bert()
+
+    else:
+        print('Do not use Pretrained Model')
 
     if args.checkpoint_step > -1:
         maml._train_step = args.checkpoint_step

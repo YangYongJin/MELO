@@ -13,7 +13,7 @@ ROOT_FOLDER = "Data"
 
 
 class DataLoader():
-    def __init__(self, file_path, max_sequence_length=10, min_sequence=5, samples_per_task=25, mode="ml-1m", pretraining=False, pretraining_batch_size=None):
+    def __init__(self, file_path, max_sequence_length=10, min_sequence=5, samples_per_task=25, mode="ml-1m", default_rating=0, pretraining=False, pretraining_batch_size=None):
         os.makedirs(os.path.join(os.path.abspath(
             '.'), ROOT_FOLDER), exist_ok=True)
         self.max_sequence_length = max_sequence_length
@@ -24,6 +24,8 @@ class DataLoader():
         self.num_items = len(self.smap)
         self.num_users = len(self.umap)
         self.total_data_num = len(self.df)
+
+        self.default_rating = default_rating
 
         # pretraining set
         if pretraining and pretraining_batch_size != None:
@@ -61,25 +63,6 @@ class DataLoader():
                 'date': list(df_group.date.apply(list)),
             }
         )
-
-        # df.product_id = df.product_id.apply(
-        #     lambda ids: self.cut_sequences(
-        #         ids)
-        # )
-
-        # df.rating = df.rating.apply(
-        #     lambda ids: self.cut_sequences(
-        #         ids)
-        # )
-
-        # df.product_id = df.product_id.apply(
-        #     lambda ids: self.subsample(
-        #         ids)
-        # )
-
-        # df.rating = df.rating.apply(
-        #     lambda ids: self.subsample(
-        #         ids)
 
         del df['date']
         print("Preprocessing Finished!")
@@ -229,6 +212,9 @@ class DataLoader():
             ratings, product_ids, normalized_num_samples, target_idx = self.preprocess_wt_subsampling(
                 product_ids, ratings)
 
+            # if we want default ratings 1
+            ratings = ratings + self.default_rating*(ratings == 0)
+
             support_data, support_target_rating = self.make_support_set(
                 user_id, product_ids, ratings, target_idx)
 
@@ -244,7 +230,8 @@ class DataLoader():
         return tasks
 
     def make_pretraining_dataloader(self, df, batch_size=128):
-        dataset = SequenceDataset(df, self.max_sequence_length)
+        dataset = SequenceDataset(
+            df, self.max_sequence_length, self.default_rating)
         dataloader = torch.utils.data.DataLoader(
             dataset,
             batch_size=batch_size,
@@ -258,7 +245,7 @@ class SequenceDataset(data.Dataset):
     """Movie dataset."""
 
     def __init__(
-        self, df, max_len
+        self, df, max_len, default_rating=0
     ):
         """
         Args:
@@ -266,6 +253,7 @@ class SequenceDataset(data.Dataset):
         """
         self.ratings_frame = df
         self.max_len = max_len
+        self.default_rating = default_rating
 
     def __len__(self):
         return len(self.ratings_frame)
@@ -291,16 +279,12 @@ class SequenceDataset(data.Dataset):
         product_ids, ratings = self.preprocessing(
             product_ids, ratings)
 
+        # if we want default ratings 1
+        ratings = ratings + self.default_rating*(ratings == 0)
+
         product_history = product_ids[:-1]
         target_product_id = product_ids[-1:][0].reshape(1)
         product_history_ratings = ratings[:-1]
         target_product_rating = ratings[-1:][0].reshape(1)
 
         return (user_id, product_history, target_product_id,  product_history_ratings), target_product_rating
-
-# dataloader = DataLoader('./Data/ml-1m/ratings.dat')
-# tasks = dataloader.generate_task()
-# support, query, task_info = tasks[0]
-# print(support[1].shape)
-# print(query[1].shape)
-# print(task_info)

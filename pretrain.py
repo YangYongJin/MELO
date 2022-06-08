@@ -21,7 +21,7 @@ class Pretrain:
         self.args = args
         self.batch_size = args.batch_size
         self.dataloader = DataLoader(
-            file_path=args.data_path, max_sequence_length=args.seq_len, min_sequence=5, samples_per_task=args.num_samples, pretraining=True, pretraining_batch_size=args.pretraining_batch_size)
+            file_path=args.data_path, max_sequence_length=args.seq_len, min_sequence=5, samples_per_task=args.num_samples, default_rating=args.default_rating, pretraining=True, pretraining_batch_size=args.pretraining_batch_size)
         self.pretraining_train_loader = self.dataloader.pretraining_train_loader
         self.pretraining_valid_loader = self.dataloader.pretraining_valid_loader
         self.args.num_users = self.dataloader.num_users
@@ -52,6 +52,8 @@ class Pretrain:
         self.best_valid_rmse_loss = 987654321
         self.best_step = 0
 
+        self.normalize_loss = self.args.normalize_loss
+
         self.lr_scheduler = optim.lr_scheduler.\
             MultiStepLR(self.optimizer, milestones=[
                         400, 700, 900], gamma=0.1)
@@ -73,13 +75,26 @@ class Pretrain:
             self.optimizer.zero_grad()
             outputs = self.model(
                 x_inputs)
-            loss = self.loss_fn(outputs, target_rating)
+            if self.normalize_loss:
+                loss = self.loss_fn(outputs, target_rating/5.0)
+                mse_loss = self.loss_fn(
+                    outputs.clone().detach()*5, target_rating)
+                mae_loss = self.mae_loss_fn(
+                    outputs.clone().detach()*5, target_rating)
+                rmse_loss = torch.sqrt(mse_loss)
+            else:
+                loss = self.loss_fn(outputs, target_rating)
+                mse_loss = self.loss_fn(
+                    outputs.clone().detach(), target_rating)
+                mae_loss = self.mae_loss_fn(
+                    outputs.clone().detach(), target_rating)
+                rmse_loss = torch.sqrt(mse_loss)
             if train:
                 loss.backward()
                 self.optimizer.step()
-            mse_losses.append(loss.detach().item())
-            mae_losses.append(self.mae_loss_fn(outputs, target_rating).item())
-            rmse_losses.append(torch.sqrt(loss.clone().detach()).item())
+            mse_losses.append(mse_loss.item())
+            mae_losses.append(mae_loss.item())
+            rmse_losses.append(rmse_loss.item())
         mae_loss = np.mean(mae_losses)
         mse_loss = np.mean(mse_losses)
         rmse_loss = np.mean(rmse_losses)
