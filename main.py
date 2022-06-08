@@ -12,7 +12,7 @@ from tqdm import tqdm
 from torch.utils.tensorboard import SummaryWriter
 
 
-SAVE_INTERVAL = 50
+# SAVE_INTERVAL = 50
 LOG_INTERVAL = 1
 VAL_INTERVAL = 10
 NUM_TEST_TASKS = 100
@@ -80,6 +80,10 @@ class MAML:
             self.task_info_lr_scheduler = optim.lr_scheduler.\
                 MultiStepLR(self.task_info_optimizer, milestones=[
                             500, 1500, 3000], gamma=0.7)
+
+        self.best_step = 0
+        self.best_valid_rmse_loss = 1
+
         print("Finished initialization")
 
     # per step loss weight for multi step loss function
@@ -278,15 +282,15 @@ class MAML:
             mse_loss, rmse_loss, mae_loss = self._outer_loop(
                 train_task, train=True)
 
-            if self._train_step % SAVE_INTERVAL == 0:
-                self._save_model()
+            # if self._train_step % SAVE_INTERVAL == 0:
+            #     self._save_model()
 
             if i % LOG_INTERVAL == 0:
                 print(
                     f'Iteration {self._train_step}: '
-                    f'MAE loss: {mae_loss:.3f} | '
-                    f'RMSE loss: {rmse_loss:.3f} | '
                     f'MSE loss: {mse_loss:.3f} | '
+                    f'RMSE loss: {rmse_loss:.3f} | '
+                    f'MAE loss: {mae_loss:.3f} | '
                 )
                 writer.add_scalar("train/MSEloss", mse_loss, self._train_step)
                 writer.add_scalar("train/RMSEloss",
@@ -303,11 +307,25 @@ class MAML:
                     f'Val RMSE loss: {rmse_loss:.3f} | '
                     f'Val MAE loss: {mae_loss:.3f} | '
                 )
+
+                # Save the best model wrt valid rmse loss
+                if self.best_valid_rmse_loss > rmse_loss:
+                    self.best_valid_rmse_loss = rmse_loss
+                    self.best_step = i
+                    self._save_model()
+                    print(f'........Model saved (step: {self.best_step} | RMSE loss: {rmse_loss:.3f})')
+
                 writer.add_scalar("valid/MSEloss", mse_loss, self._train_step)
                 writer.add_scalar("valid/RMSEloss",
                                   rmse_loss, self._train_step)
                 writer.add_scalar("valid/MAEloss", mae_loss, self._train_step)
         writer.close()
+
+        print("-------------------------------------------------")
+        print("Model with the best validation RMSE loss is saved.")
+        print(f'Best step: {self.best_step}')
+        print(f'Best RMSE loss: {self.best_valid_rmse_loss:.3f}')
+        print("Done.")
 
     def test(self):
         accuracies = []
