@@ -59,6 +59,9 @@ class Pretrain:
         self._train_step = 0
 
     def epoch_step(self, data_loader, train=True):
+        mse_losses = []
+        mae_losses = []
+        rmse_losses = []
         for input, target_rating in tqdm(data_loader):
             user_id, product_history, target_product_id,  product_history_ratings = input
 
@@ -74,11 +77,14 @@ class Pretrain:
             if train:
                 loss.backward()
                 self.optimizer.step()
-            mae_loss = self.mae_loss_fn(outputs, target_rating).item()
-            mse_loss = loss.detach().item()
-            rmse_loss = torch.sqrt(loss).detach().item()
+            mse_losses.append(loss.detach().item())
+            mae_losses.append(self.mae_loss_fn(outputs, target_rating).item())
+            rmse_losses.append(torch.sqrt(loss.clone().detach()).item())
+        mae_loss = np.mean(mae_losses)
+        mse_loss = np.mean(mse_losses)
+        rmse_loss = np.mean(rmse_losses)
 
-            return mse_loss, mae_loss, rmse_loss
+        return mse_loss, mae_loss, rmse_loss
 
     def train(self, epochs):
         """Train the MAML.
