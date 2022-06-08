@@ -50,6 +50,8 @@ class DataLoader():
                 self.train_set, pretraining_batch_size)
             self.pretraining_valid_loader = self.make_pretraining_dataloader(
                 self.valid_set, pretraining_batch_size)
+            self.pretraining_test_loader = self.make_pretraining_dataloader(
+                self.test_set, pretraining_batch_size)
 
     def preprocessing(self, file_path, min_sequence, mode="ml-1m"):
         '''

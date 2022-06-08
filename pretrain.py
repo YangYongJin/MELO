@@ -146,7 +146,8 @@ class Pretrain:
                     "train/MAEloss", mae_loss, self._train_step)
 
             if epoch % VAL_INTERVAL == 0:
-                self.epoch_step(self.pretraining_valid_loader, train=False)
+                mse_loss, mae_loss, rmse_loss = self.epoch_step(
+                    self.pretraining_valid_loader, train=False)
 
                 print(
                     f'\tValidation: '
@@ -204,6 +205,20 @@ class Pretrain:
         else:
             torch.save(self.model.state_dict(),
                        os.path.join(self._save_dir, f"{self._train_step}_best"))
+
+    def test(self):
+        '''
+            test
+        '''
+        mse_loss, mae_loss, rmse_loss = self.epoch_step(
+            self.pretraining_test_loader, train=False)
+
+        print(
+            f'\tTest: '
+            f'Test MSE loss: {mse_loss:.3f} | '
+            f'Test RMSE loss: {rmse_loss:.3f} | '
+            f'Test MAE loss: {mae_loss:.3f} | '
+        )
 
 
 def main(args):
