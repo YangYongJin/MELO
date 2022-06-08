@@ -33,8 +33,8 @@ class Pretrain:
         # bert4rec model
         self.model = BERTModel(self.args).to(self.device)
 
-        self._log_dir = args.log_dir
-        self._save_dir = os.path.join(args.log_dir, 'state')
+        self._log_dir = args.pretrain_log_dir
+        self._save_dir = os.path.join(args.pretrain_log_dir, 'state')
         os.makedirs(self._log_dir, exist_ok=True)
         os.makedirs(self._save_dir, exist_ok=True)
 

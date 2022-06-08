@@ -176,6 +176,9 @@ class MAML:
 
         # inner loop params
         phi_model = copy.deepcopy(self.model)
+        if self.args.freeze_bert:
+            for param in phi_model.bert.parameters():
+                param.requires_grad = False
         optimizer = optim.SGD(phi_model.parameters(), lr=self._inner_lr)
 
         # GPU enabling
@@ -298,11 +301,11 @@ class MAML:
         print(f"Starting MAML training at iteration {self._train_step}")
         writer = SummaryWriter(log_dir=self._log_dir)
         val_batches = self.dataloader.generate_task(
-            mode="valid", batch_size=500)
+            mode="valid", batch_size=500, normalized=self.normalize_loss)
         for i in range(1, train_steps+1):
             self._train_step += 1
             train_task = self.dataloader.generate_task(
-                mode="train", batch_size=self.batch_size)
+                mode="train", batch_size=self.batch_size, normalized=self.normalize_loss)
 
             mse_loss, rmse_loss, mae_loss = self._outer_loop(
                 train_task, train=True)

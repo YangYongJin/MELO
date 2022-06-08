@@ -186,17 +186,22 @@ class DataLoader():
                       query_target_product, query_rating_history, query_target_rating)
         return query_data
 
-    def make_rating_info(self, support_target_rating):
+    def make_rating_info(self, support_target_rating, normalized=False):
         num_1 = (support_target_rating == 1).sum()/len(support_target_rating)
         num_2 = (support_target_rating == 2).sum()/len(support_target_rating)
         num_3 = (support_target_rating == 3).sum()/len(support_target_rating)
         num_4 = (support_target_rating == 4).sum()/len(support_target_rating)
         num_5 = (support_target_rating == 5).sum()/len(support_target_rating)
-        rating_mean = support_target_rating.mean()
-        rating_std = support_target_rating.std()
+
+        if normalized:
+            rating_mean = (support_target_rating/5.0).mean()
+            rating_std = (support_target_rating/5.0).std()
+        else:
+            rating_mean = support_target_rating.mean()
+            rating_std = support_target_rating.std()
         return [rating_mean, rating_std, num_1, num_2, num_3, num_4, num_5]
 
-    def generate_task(self, mode="train", batch_size=20):
+    def generate_task(self, mode="train", batch_size=20, normalized=False):
         if mode == "train":
             data_set = self.train_set
         elif mode == "valid":
@@ -218,7 +223,8 @@ class DataLoader():
             support_data, support_target_rating = self.make_support_set(
                 user_id, product_ids, ratings, target_idx)
 
-            rating_info = self.make_rating_info(support_target_rating)
+            rating_info = self.make_rating_info(
+                support_target_rating, normalized)
 
             query_data = self.make_query_set(
                 user_id, product_ids, ratings, target_idx)

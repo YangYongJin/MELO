@@ -83,5 +83,7 @@ parser.add_argument('--load_pretrained', type=boolean_string, default=True,
                     help='load pretrained model or not')
 parser.add_argument('--freeze_bert', type=boolean_string, default=True,
                     help='freeze bert model or not')
+parser.add_argument('--pretrain_log_dir', type=str, default='./log_pretrained',
+                    help='directory to save to or load from pretrained')
 
 args = parser.parse_args()
