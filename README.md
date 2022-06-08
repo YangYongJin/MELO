@@ -2,12 +2,14 @@
 BERT4REC_MAML is implementation of maml with task adaptive loss using bert4rec model<br/>
 BERT4REC model reference code: https://github.com/jaywonchung/BERT4Rec-VAE-Pytorch  
 <br/>
+
 ## Dependencies  
 * pytorch 
 * tqdm 
 * tensorboard
 * wget  
 <br/>
+
 ## Usage
 <br/>
 <b> Please read options.py carefully to choose correct learner </b>
