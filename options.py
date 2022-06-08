@@ -1,9 +1,11 @@
 import argparse
 
+
 def boolean_string(s):
     if s not in {'False', 'True'}:
         raise ValueError('Not a valid boolean string')
     return s == 'True'
+
 
 parser = argparse.ArgumentParser('Train a MAML!')
 # about log and data
@@ -18,23 +20,28 @@ parser.add_argument('--test', default=False, action='store_true',
 parser.add_argument('--checkpoint_step', type=int, default=-1,
                     help=('checkpoint iteration to load for resuming '
                           'training, or for evaluation (-1 is ignored)'))
+parser.add_argument('--num_test_data', type=int, default=500,
+                    help=('the number of test data'))
+
 
 # hyperparmeters for training
 parser.add_argument('--num_inner_steps', type=int, default=5,
                     help='number of inner-loop updates')
-parser.add_argument('--inner_lr', type=float, default=1e-4,
+parser.add_argument('--inner_lr', type=float, default=1e-3,
                     help='inner-loop learning rate initialization')
 parser.add_argument('--outer_lr', type=float, default=1e-5,
-                    help='outer-loop learning rate')
+                    help='outer-loop bert learning rate')
+parser.add_argument('--fc_lr', type=float, default=1e-4,
+                    help='outer-loop fc learning rate')
 parser.add_argument('--loss_lr', type=float, default=1e-4,
                     help='outer-loop learning rate')
-parser.add_argument('--task_info_lr', type=float, default=1e-4,
+parser.add_argument('--task_info_lr', type=float, default=1e-3,
                     help='outer-loop learning rate')
-parser.add_argument('--num_train_iterations', type=int, default=5000,
+parser.add_argument('--num_train_iterations', type=int, default=1000,
                     help='number of outer-loop updates to train for')
 
 # about bert model
-parser.add_argument('--seq_len', type=int, default=10,
+parser.add_argument('--seq_len', type=int, default=30,
                     help='sequence length')
 parser.add_argument('--bert_num_blocks', type=int, default=2,
                     help='number of bert blocks')
@@ -54,22 +61,24 @@ parser.add_argument('--num_items', type=int, default=0,
                     help='number of items')
 parser.add_argument('--batch_size', type=int, default=25,
                     help='batch size')
-parser.add_argument('--num_users_per_task', type=int, default=2,
-                    help='number of users per task')
-parser.add_argument('--num_samples', type=int, default=32,
+parser.add_argument('--num_samples', type=int, default=64,
                     help='number of subsamples')
-parser.add_argument('--default_rating', type=int, default=0,
+parser.add_argument('--default_rating', type=int, default=1,
                     help='rating value for padding')
+parser.add_argument('--min_window_size', type=int, default=5,
+                    help=('minimum sequence during subsampling'))
 
 # training options
-parser.add_argument('--multi_step_loss_num_epochs', type=int, default=1000,
+parser.add_argument('--multi_step_loss_num_epochs', type=int, default=500,
                     help='number of epochs using multi step loss')
 parser.add_argument('--use_multi_step', type=boolean_string, default=True,
                     help='use multi step loss or not')
 parser.add_argument('--use_adaptive_loss', type=boolean_string, default=True,
                     help='use adaptive loss or pure maml')
-parser.add_argument('--normalize_loss', type=boolean_string, default=False,
-                    help='use normalized mse')
+parser.add_argument('--use_adaptive_loss_weight', type=boolean_string, default=True,
+                    help='use adaptive loss with weight')
+parser.add_argument('--normalize_loss', type=boolean_string, default=True,
+                    help='use normalized ratings')
 
 
 # pretraining options
@@ -79,10 +88,12 @@ parser.add_argument('--pretrain_epochs', type=int, default=1000,
                     help='the number of epochs for pretraining')
 parser.add_argument('--pretraining_lr', type=float, default=0.0001,
                     help='learning rate during pretraining')
-parser.add_argument('--load_pretrained', type=boolean_string, default=True,
+parser.add_argument('--load_pretrained', type=boolean_string, default=False,
                     help='load pretrained model or not')
-parser.add_argument('--freeze_bert', type=boolean_string, default=True,
+parser.add_argument('--freeze_bert', type=boolean_string, default=False,
                     help='freeze bert model or not')
+parser.add_argument('--load_save_bert', type=boolean_string, default=True,
+                    help='load and save bert or whole model at pretrain.py')
 parser.add_argument('--pretrain_log_dir', type=str, default='./log_pretrained',
                     help='directory to save to or load from pretrained')
 

@@ -21,7 +21,7 @@ class Pretrain:
         self.args = args
         self.batch_size = args.batch_size
         self.dataloader = DataLoader(
-            file_path=args.data_path, max_sequence_length=args.seq_len, min_sequence=5, samples_per_task=args.num_samples, default_rating=args.default_rating, pretraining=True, pretraining_batch_size=args.pretraining_batch_size)
+            file_path=args.data_path, max_sequence_length=args.seq_len, min_sequence=5, min_window_size=args.min_window_size, samples_per_task=args.num_samples, num_test_data=args.num_test_data, default_rating=args.default_rating, pretraining=True, pretraining_batch_size=args.pretraining_batch_size)
         self.pretraining_train_loader = self.dataloader.pretraining_train_loader
         self.pretraining_valid_loader = self.dataloader.pretraining_valid_loader
         self.args.num_users = self.dataloader.num_users
@@ -58,23 +58,35 @@ class Pretrain:
             MultiStepLR(self.optimizer, milestones=[
                         400, 700, 900], gamma=0.1)
 
+        ##### load and save whole model or only bert #####
+        self.load_save_bert = args.load_save_bert
+
         self._train_step = 0
 
     def epoch_step(self, data_loader, train=True):
+        '''
+            do one epoch step
+        '''
         mse_losses = []
         mae_losses = []
         rmse_losses = []
+        # one epoch opeartion
         for input, target_rating in tqdm(data_loader):
             user_id, product_history, target_product_id,  product_history_ratings = input
 
+            # gpu loading
             x_inputs = (user_id.to(self.device), product_history.to(
                 self.device),
                 target_product_id.to(
                     self.device),  product_history_ratings.to(self.device))
             target_rating = target_rating.to(self.device)
             self.optimizer.zero_grad()
+
+            # forward prop
             outputs = self.model(
                 x_inputs)
+
+            # compute loss
             if self.normalize_loss:
                 loss = self.loss_fn(outputs, target_rating/5.0)
                 mse_loss = self.loss_fn(
@@ -89,12 +101,16 @@ class Pretrain:
                 mae_loss = self.mae_loss_fn(
                     outputs.clone().detach(), target_rating)
                 rmse_loss = torch.sqrt(mse_loss)
+
+            # update paramters
             if train:
                 loss.backward()
                 self.optimizer.step()
             mse_losses.append(mse_loss.item())
             mae_losses.append(mae_loss.item())
             rmse_losses.append(rmse_loss.item())
+
+        # set results
         mae_loss = np.mean(mae_losses)
         mse_loss = np.mean(mse_losses)
         rmse_loss = np.mean(rmse_losses)
@@ -152,24 +168,42 @@ class Pretrain:
         writer.close()
 
     def load(self, checkpoint_step):
-        target_path = os.path.join(self._save_dir, f"{checkpoint_step}")
+        '''
+            load model
+        '''
+        target_path = os.path.join(self._save_dir, f"{checkpoint_step}_best")
         print("Loading checkpoint from", target_path)
         try:
+            # set device location
             if torch.cuda.is_available():
                 def map_location(storage, loc): return storage.cuda()
             else:
                 map_location = 'cpu'
-            self.model.bert.load_state_dict(
-                torch.load(target_path, map_location=map_location))
+
+            if self.load_save_bert:
+                self.model.bert.load_state_dict(
+                    torch.load(target_path, map_location=map_location)
+                )
+            else:
+                self.model.load_state_dict(
+                    torch.load(target_path, map_location=map_location)
+                )
 
         except:
             raise ValueError(
                 f'No checkpoint for iteration {checkpoint_step} found.')
 
     def _save_model(self):
+        '''
+            save model
+        '''
         # Save a model to 'save_dir'
-        torch.save(self.model.bert.state_dict(),
-                   os.path.join(self._save_dir, f"{self._train_step}"))
+        if self.load_save_bert:
+            torch.save(self.model.bert.state_dict(),
+                       os.path.join(self._save_dir, f"{self._train_step}_best"))
+        else:
+            torch.save(self.model.state_dict(),
+                       os.path.join(self._save_dir, f"{self._train_step}_best"))
 
 
 def main(args):

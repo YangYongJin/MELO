@@ -22,18 +22,23 @@ class MAML:
     def __init__(self, args):
 
         self.args = args
-        self.batch_size = args.batch_size
+        self.batch_size = args.batch_size  # task batch size
         self.dataloader = DataLoader(
-            file_path=args.data_path, max_sequence_length=args.seq_len, min_sequence=5, samples_per_task=args.num_samples, default_rating=args.default_rating)
+            file_path=args.data_path, max_sequence_length=args.seq_len, min_sequence=5, min_window_size=args.min_window_size, samples_per_task=args.num_samples, num_test_data=args.num_test_data, default_rating=args.default_rating)
+
+        # set # of users and # of items
         self.args.num_users = self.dataloader.num_users
         self.args.num_items = self.dataloader.num_items
 
+        # set device
         self.device = torch.device('cpu')
         if torch.cuda.is_available():
             self.device = torch.cuda.current_device()
-        # bert4rec model
+
+        # define bert4rec model (theta)
         self.model = BERTModel(self.args).to(self.device)
 
+        # set log and save directories
         self._log_dir = args.log_dir
         self._save_dir = os.path.join(args.log_dir, 'state')
         os.makedirs(self._log_dir, exist_ok=True)
@@ -42,33 +47,44 @@ class MAML:
         # whether to use multi step loss
         self.use_multi_step = args.use_multi_step
 
+        # meta hyperparameters
         self._num_inner_steps = args.num_inner_steps
         self._inner_lr = args.inner_lr
+        # for bert
         self._outer_lr = args.outer_lr
-        self._loss_lr = args.loss_lr
-        self._task_info_lr = args.task_info_lr
+        # for last fc layers
+        self._fc_lr = args.fc_lr
 
+        # user normalized ratings (0, 1)
         self.normalize_loss = self.args.normalize_loss
 
+        # freeze bert model and only update last layers
         if args.freeze_bert:
             self.meta_optimizer = optim.Adam(
-                self.model.parameters(), lr=self._outer_lr)
+                self.model.parameters(), lr=self._fc_lr)
         else:
+            # apply different learning rate for bert and fc
             self.meta_optimizer = optim.Adam([
                 {'params': self.model.bert.parameters()},
-                {'params': self.model.dim_reduct.parameters(), 'lr': 1e-3},
-                {'params': self.model.out.parameters(), 'lr': 1e-3}
+                {'params': self.model.dim_reduct.parameters(), 'lr': self._fc_lr},
+                {'params': self.model.out.parameters(), 'lr': self._fc_lr}
             ], lr=self._outer_lr)
 
+        # meta learning rate scheduler
         self.meta_lr_scheduler = optim.lr_scheduler.\
             MultiStepLR(self.meta_optimizer, milestones=[
-                        500, 1500, 3000], gamma=0.1)
-
+                        500, 800, 950], gamma=0.1)
+        # current epoch
         self._train_step = 0
 
+        # options - using adaptive loss and using weight of adaptive loss
         self.use_adaptive_loss = args.use_adaptive_loss
-        # loss function network
+        self.use_adaptive_loss_weight = (
+            args.use_adaptive_loss_weight and self.use_adaptive_loss)
+
+        # settings for adaptive loss
         if self.use_adaptive_loss:
+            self._loss_lr = args.loss_lr
             self.loss_network = nn.Sequential(
                 nn.Linear(9, 9),
                 nn.ReLU(),
@@ -78,7 +94,11 @@ class MAML:
                 self.loss_network.parameters(), lr=self._loss_lr)
             self.loss_lr_scheduler = optim.lr_scheduler.\
                 MultiStepLR(self.loss_optimizer, milestones=[
-                            500, 1500, 3000], gamma=0.7)
+                            500, 800, 950], gamma=0.7)
+
+         # settings for adaptive loss weight
+        if self.use_adaptive_loss_weight:
+            self._task_info_lr = args.task_info_lr
             self.task_info_network = nn.Sequential(
                 nn.Linear(8, 8),
                 nn.ReLU(),
@@ -88,15 +108,15 @@ class MAML:
                 self.task_info_network.parameters(), lr=self._task_info_lr)
             self.task_info_lr_scheduler = optim.lr_scheduler.\
                 MultiStepLR(self.task_info_optimizer, milestones=[
-                            500, 1500, 3000], gamma=0.7)
+                            500, 800, 950], gamma=0.7)
 
+        # best results
         self.best_step = 0
-        self.best_valid_rmse_loss = 1
+        self.best_valid_rmse_loss = 987654321
 
         print("Finished initialization")
 
     # per step loss weight for multi step loss function
-
     def get_per_step_loss_importance_vector(self):
         """
         Generates a tensor of dimensionality (num_inner_loop_steps) indicating the importance of each step's target
@@ -124,11 +144,24 @@ class MAML:
 
     # update meta paramters
     def update_meta_params(self, query_inputs, query_target_rating, optimizer, loss_fn, mae_loss_fn, phi_model, imp_weight=1):
-        # get gradients
+        '''
+        Update gradient values of meta learning parameters
+        Args:
+            query_inputs: query inputs
+            query_target_rating : query target rating
+            optimizer: inner loop optimizer
+            loss_fn : inner loop loss(mse)
+            mae_loss_fn : mae loss
+            phi_model : current inner loop paramters phi
+            imp_weight : importance weight vector for gradients(multi step) 
+        '''
+        # zero grad
         optimizer.zero_grad()
+
+        # forward propagate on query data
         outputs = phi_model(query_inputs)
 
-        # normalized version
+        # compute loss
         if self.normalize_loss:
             query_loss = loss_fn(outputs, query_target_rating/5.0)
             mae_loss = mae_loss_fn(
@@ -142,7 +175,7 @@ class MAML:
             query_output_loss = query_loss.clone().detach()
         query_loss.backward()
 
-        # update meta loss function
+        # update gradients of meta paramters
         for k, v in zip(self.model.parameters(), phi_model.parameters()):
             if k.requires_grad == True:
                 if k.grad == None:
@@ -153,7 +186,6 @@ class MAML:
         return query_output_loss, mae_loss
 
     # inner loop optimization
-
     def _inner_loop(self, support_data, task_info, query_inputs, query_target_rating, imp_vecs, train):
         """Computes the adapted network parameters via the MAML inner loop.
 
@@ -174,11 +206,15 @@ class MAML:
         loss_fn = nn.MSELoss()
         mae_loss_fn = nn.L1Loss()
 
-        # inner loop params
+        # inner loop parameters phi
         phi_model = copy.deepcopy(self.model)
+
+        # if freeze bert, do not update bert
         if self.args.freeze_bert:
             for param in phi_model.bert.parameters():
                 param.requires_grad = False
+
+        # inner loop optimizers
         optimizer = optim.SGD(phi_model.parameters(), lr=self._inner_lr)
 
         # GPU enabling
@@ -193,33 +229,42 @@ class MAML:
 
         # inner loop optimization
         for step in range(self._num_inner_steps):
-            # update phi(inner loop parameter)
+
+            # forward propagate on support set
             optimizer.zero_grad()
             outputs = phi_model(inputs)
+
+            # compute loss
             if self.normalize_loss:
                 loss = loss_fn(outputs, target_rating/5.0)
             else:
                 loss = loss_fn(outputs, target_rating)
 
+            # adaptive loss
             if self.use_adaptive_loss:
                 # normalize task information
                 task_info_step = torch.cat((loss.reshape(1), task_info))
                 task_info_adapt = (task_info_step-task_info_step.mean()) / \
                     (task_info_step.std() + 1e-5)
-                weight = self.task_info_network(task_info)[0]
-                loss += weight * self.loss_network(task_info_adapt)[0]
+                if self.use_adaptive_loss_weight:
+                    weight = self.task_info_network(task_info)[0]
+                    loss += weight * self.loss_network(task_info_adapt)[0]
+                else:
+                    loss += self.loss_network(task_info_adapt)[0]
 
+            # update inner loop paramters phi
             loss.backward()
             optimizer.step()
 
-            ##### multi step loss ######
+            ##### multi step loss - update meta paramters ######
             if self.use_multi_step and self._train_step < self.args.multi_step_loss_num_epochs and train:
                 query_loss, mae_loss = self.update_meta_params(
                     query_inputs, query_target_rating, optimizer, loss_fn, mae_loss_fn, phi_model, imp_vecs[step])
 
-            # Fo-maml loss
+            ##### Fo-maml loss - update meta paramters at last step ####
+            ### also use this step for valid set ###
             else:
-                # after all updates
+                # at last step
                 if step == self._num_inner_steps - 1:
                     if train:
                         phi_model.train()
@@ -253,10 +298,12 @@ class MAML:
         self.meta_optimizer.zero_grad()
         if self.use_adaptive_loss:
             self.loss_optimizer.zero_grad()
+        if self.use_adaptive_loss_weight:
+            self.task_info_optimizer.zero_grad()
 
         # loop through task batch
         for idx, task in enumerate(tqdm(task_batch)):
-            # query data -> move them to gpu
+            # query data gpu loading
             support, query, task_info = task
             user_id, product_history, target_product_id,  product_history_ratings, target_rating = query
             query_inputs = user_id.to(self.device), product_history.to(
@@ -269,6 +316,7 @@ class MAML:
             loss, mae_loss = self._inner_loop(
                 support, task_info, query_inputs, query_target_rating, imp_vecs, train)  # do inner loop
 
+            # collect loss data
             mse_loss_batch.append(loss.detach().to("cpu").item())
             mae_loss_batch.append(mae_loss.detach().to("cpu").item())
 
@@ -279,9 +327,11 @@ class MAML:
             if self.use_adaptive_loss:
                 self.loss_optimizer.step()
                 self.loss_lr_scheduler.step()
+            if self.use_adaptive_loss_weight:
                 self.task_info_optimizer.step()
                 self.task_info_lr_scheduler.step()
 
+        # set results
         mse_loss = np.mean(mse_loss_batch)
         rmse_loss = np.sqrt(mse_loss)
         mae_loss = np.mean(mae_loss_batch)
@@ -299,20 +349,27 @@ class MAML:
             train_steps (int) : the number of steps this model should train for
         """
         print(f"Starting MAML training at iteration {self._train_step}")
+
+        # define tensorboard writer
         writer = SummaryWriter(log_dir=self._log_dir)
+
+        # set validation tasks
         val_batches = self.dataloader.generate_task(
-            mode="valid", batch_size=500, normalized=self.normalize_loss)
+            mode="valid", batch_size=300, normalized=self.normalize_loss)
+
+        # iteration
         for i in range(1, train_steps+1):
             self._train_step += 1
+
+            # generate train task batch
             train_task = self.dataloader.generate_task(
                 mode="train", batch_size=self.batch_size, normalized=self.normalize_loss)
 
+            # update meta paramters and return losses
             mse_loss, rmse_loss, mae_loss = self._outer_loop(
                 train_task, train=True)
 
-            # if self._train_step % SAVE_INTERVAL == 0:
-            #     self._save_model()
-
+            # looging
             if i % LOG_INTERVAL == 0:
                 print(
                     f'Iteration {self._train_step}: '
@@ -325,6 +382,7 @@ class MAML:
                                   rmse_loss, self._train_step)
                 writer.add_scalar("train/MAEloss", mae_loss, self._train_step)
 
+            # evaluate validation set
             if i % VAL_INTERVAL == 0:
                 mse_loss, rmse_loss, mae_loss = self._outer_loop(
                     val_batches, train=False)
@@ -357,27 +415,25 @@ class MAML:
         print("Done.")
 
     def test(self):
-        accuracies = []
-        test = [self.val_data.generate_task(
-            NUM_TEST_TASKS//10) for _ in range(10)]
-        for test_data in test:
-            if self.is_plus:
-                _, _, accuracy_query = self._outer_loop_plus(
-                    test_data, train=False)
-            else:
-                _, _, accuracy_query = self._outer_loop(test_data, train=False)
-            accuracies.append(accuracy_query)
-        mean = np.mean(accuracies)
-        std = np.std(accuracies)
-        mean_95_confidence_interval = 1.96 * std / np.sqrt(10)
+        '''
+            Test on test batches
+        '''
+        test_batches = self.dataloader.generate_task(
+            mode="valid", batch_size=500, normalized=self.normalize_loss)
+        mse_loss, rmse_loss, mae_loss = self._outer_loop(
+            test_batches, train=False)
         print(
-            f'Accuracy over {NUM_TEST_TASKS} test tasks: '
-            f'mean {mean:.3f}, '
-            f'95% confidence interval {mean_95_confidence_interval:.3f}'
+            f'\tTest: '
+            f'Test MSE loss: {mse_loss:.3f} | '
+            f'Test RMSE loss: {rmse_loss:.3f} | '
+            f'Test MAE loss: {mae_loss:.3f} | '
         )
 
     def load(self, checkpoint_step):
-        target_path = os.path.join(self._save_dir, f"{checkpoint_step}")
+        '''
+            load meta paramters
+        '''
+        target_path = os.path.join(self._save_dir, f"{checkpoint_step}_best")
         print("Loading checkpoint from", target_path)
         try:
             if torch.cuda.is_available():
@@ -392,11 +448,16 @@ class MAML:
                 f'No checkpoint for iteration {checkpoint_step} found.')
 
     def _save_model(self):
-        # Save a model to 'save_dir'
+        '''
+            save meta paramters
+        '''
         torch.save(self.model.state_dict(),
-                   os.path.join(self._save_dir, f"{self._train_step}"))
+                   os.path.join(self._save_dir, f"{self._train_step}_best"))
 
     def load_pretrained_bert(self, filename):
+        '''
+            load pretrained bert model
+        '''
         pretrained_path = os.path.join('./pretrained', filename)
         print("Loading Pretrained Model")
         try:
@@ -404,21 +465,29 @@ class MAML:
                 def map_location(storage, loc): return storage.cuda()
             else:
                 map_location = 'cpu'
-            self.model.bert.load_state_dict(torch.load(
-                pretrained_path, map_location=map_location))
+
+            if self.args.load_save_bert:
+                self.model.bert.load_state_dict(torch.load(
+                    pretrained_path, map_location=map_location))
+            else:
+                self.model.load_state_dict(torch.load(
+                    pretrained_path, map_location=map_location))
 
         except:
             raise ValueError(
                 f'No Pretrained Model or something goes wrong.')
 
     def freeze_bert(self):
+        '''
+            freeze bert
+        '''
         for param in self.model.bert.parameters():
             param.requires_grad = False
 
 
 def main(args):
     if args.log_dir is None:
-        args.log_dir = os.path.join(os.path.abspath('.'), "p1_log/")
+        args.log_dir = os.path.join(os.path.abspath('.'), "log/")
 
     print(f'log_dir: {args.log_dir}')
 
@@ -429,12 +498,17 @@ def main(args):
     if args.load_pretrained:
         dir = os.listdir('./pretrained')
         if len(dir) != 0:
-            maml.load_pretrained_bert(dir[0])
+            for filename in dir:
+                if 'best' in filename:
+                    maml.load_pretrained_bert(filename)
+                    break
             if args.freeze_bert:
                 maml.freeze_bert()
+        else:
+            print("No pretrained model - skip loading")
 
     else:
-        print('Do not use Pretrained Model')
+        print('Pretrained Model loading skipped')
 
     if args.checkpoint_step > -1:
         maml._train_step = args.checkpoint_step
