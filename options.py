@@ -20,7 +20,7 @@ parser.add_argument('--num_inner_steps', type=int, default=5,
                     help='number of inner-loop updates')
 parser.add_argument('--inner_lr', type=float, default=1e-3,
                     help='inner-loop learning rate initialization')
-parser.add_argument('--outer_lr', type=float, default=2e-4,
+parser.add_argument('--outer_lr', type=float, default=1e-5,
                     help='outer-loop learning rate')
 parser.add_argument('--loss_lr', type=float, default=1e-3,
                     help='outer-loop learning rate')

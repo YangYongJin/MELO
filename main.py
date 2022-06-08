@@ -14,7 +14,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 # SAVE_INTERVAL = 50
 LOG_INTERVAL = 1
-VAL_INTERVAL = 10
+VAL_INTERVAL = 50
 NUM_TEST_TASKS = 100
 
 
@@ -273,7 +273,7 @@ class MAML:
         print(f"Starting MAML training at iteration {self._train_step}")
         writer = SummaryWriter(log_dir=self._log_dir)
         val_batches = self.dataloader.generate_task(
-            mode="valid", batch_size=50)
+            mode="valid", batch_size=500)
         for i in range(1, train_steps+1):
             self._train_step += 1
             train_task = self.dataloader.generate_task(
@@ -313,7 +313,8 @@ class MAML:
                     self.best_valid_rmse_loss = rmse_loss
                     self.best_step = i
                     self._save_model()
-                    print(f'........Model saved (step: {self.best_step} | RMSE loss: {rmse_loss:.3f})')
+                    print(
+                        f'........Model saved (step: {self.best_step} | RMSE loss: {rmse_loss:.3f})')
 
                 writer.add_scalar("valid/MSEloss", mse_loss, self._train_step)
                 writer.add_scalar("valid/RMSEloss",
