@@ -230,7 +230,10 @@ def main(args):
     else:
         print('Checkpoint loading skipped.')
 
-    pretrain_module.train(epochs=args.pretrain_epochs)
+    if args.test:
+        pretrain_module.test()
+    else:
+        pretrain_module.train(epochs=args.pretrain_epochs)
 
 
 if __name__ == '__main__':

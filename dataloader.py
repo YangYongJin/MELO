@@ -452,3 +452,11 @@ class SequenceDataset(data.Dataset):
         target_product_rating = ratings[-1:][0].reshape(1)
 
         return (user_id, product_history, target_product_id,  product_history_ratings), target_product_rating
+
+
+# dataloader = DataLoader('./Data/ml-1m/ratings.dat', max_sequence_length=30, min_sequence=5, min_window_size=15,
+#                         samples_per_task=64, num_test_data=500,  mode="ml-1m", default_rating=1, pretraining=False, pretraining_batch_size=None)
+# tasks = dataloader.generate_task(mode="train", batch_size=25, normalized=True)
+# support, query, task = tasks[0]
+# support_user_id, support_product_history, support_target_product, support_rating_history, support_target_rating = support
+# print(((support_product_history)==0).sum(axis=1))
