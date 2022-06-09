@@ -153,7 +153,7 @@ class MAML:
             loss_fn : inner loop loss(mse)
             mae_loss_fn : mae loss
             phi_model : current inner loop paramters phi
-            imp_weight : importance weight vector for gradients(multi step) 
+            imp_weight : importance weight vector for gradients(multi step)
         '''
         # zero grad
         optimizer.zero_grad()
@@ -373,9 +373,9 @@ class MAML:
             if i % LOG_INTERVAL == 0:
                 print(
                     f'Iteration {self._train_step}: '
-                    f'MSE loss: {mse_loss:.3f} | '
-                    f'RMSE loss: {rmse_loss:.3f} | '
-                    f'MAE loss: {mae_loss:.3f} | '
+                    f'MSE loss: {mse_loss:.4f} | '
+                    f'RMSE loss: {rmse_loss:.4f} | '
+                    f'MAE loss: {mae_loss:.4f} | '
                 )
                 writer.add_scalar("train/MSEloss", mse_loss, self._train_step)
                 writer.add_scalar("train/RMSEloss",
@@ -389,9 +389,9 @@ class MAML:
 
                 print(
                     f'\tValidation: '
-                    f'Val MSE loss: {mse_loss:.3f} | '
-                    f'Val RMSE loss: {rmse_loss:.3f} | '
-                    f'Val MAE loss: {mae_loss:.3f} | '
+                    f'Val MSE loss: {mse_loss:.4f} | '
+                    f'Val RMSE loss: {rmse_loss:.4f} | '
+                    f'Val MAE loss: {mae_loss:.4f} | '
                 )
 
                 # Save the best model wrt valid rmse loss
@@ -400,7 +400,7 @@ class MAML:
                     self.best_step = i
                     self._save_model()
                     print(
-                        f'........Model saved (step: {self.best_step} | RMSE loss: {rmse_loss:.3f})')
+                        f'........Model saved (step: {self.best_step} | RMSE loss: {rmse_loss:.4f})')
 
                 writer.add_scalar("valid/MSEloss", mse_loss, self._train_step)
                 writer.add_scalar("valid/RMSEloss",
@@ -411,7 +411,7 @@ class MAML:
         print("-------------------------------------------------")
         print("Model with the best validation RMSE loss is saved.")
         print(f'Best step: {self.best_step}')
-        print(f'Best RMSE loss: {self.best_valid_rmse_loss:.3f}')
+        print(f'Best RMSE loss: {self.best_valid_rmse_loss:.4f}')
         print("Done.")
 
     def test(self):
@@ -424,9 +424,9 @@ class MAML:
             test_batches, train=False)
         print(
             f'\tTest: '
-            f'Test MSE loss: {mse_loss:.3f} | '
-            f'Test RMSE loss: {rmse_loss:.3f} | '
-            f'Test MAE loss: {mae_loss:.3f} | '
+            f'Test MSE loss: {mse_loss:.4f} | '
+            f'Test RMSE loss: {rmse_loss:.4f} | '
+            f'Test MAE loss: {mae_loss:.4f} | '
         )
 
     def load(self, checkpoint_step):
