@@ -31,10 +31,10 @@ python main.py --use_multi_step=False
 python main.py --use_multi_step=False --use_adaptive_loss=False
 ```
 
-* test on Amazon dataset
+* test on Amazon dataset(example)
 place amazon dataset csv file at Data/
 ```bash 
-python main.py --mode="amazon"
+python main.py --mode=amazon --data_path=./Data/Office_Products.csv --min_window_size=2 --seq_len=10
 ```
 <br/>
 

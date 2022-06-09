@@ -13,7 +13,7 @@ ROOT_FOLDER = "Data"
 
 
 class DataLoader():
-    def __init__(self, file_path, max_sequence_length=10, min_sequence=5, min_window_size=2, samples_per_task=25, num_test_data=500,  mode="ml-1m", default_rating=0, pretraining=False, pretraining_batch_size=None):
+    def __init__(self, file_path, max_sequence_length=10, min_sequence=5, min_window_size=2, samples_per_task=25, num_test_data=500,  random_seed=222, mode="ml-1m", default_rating=0, pretraining=False, pretraining_batch_size=None):
         '''
         Args:
             file_path : path of file containing target data
@@ -21,6 +21,8 @@ class DataLoader():
             min_sequence : minimum sequence used to filter users
             min_window_size : minimum window size during subsampling
             samples_per_task : number of subsamples for each user
+            num_test_data : the number of test data
+            random_seed : random seed for test data sampling
             mode : "amazon" or "ml-1m"
             default_rating : padding options
             pretraining : when used for pretraining or single bert model
@@ -32,6 +34,8 @@ class DataLoader():
             '.'), ROOT_FOLDER), exist_ok=True)
         self.max_sequence_length = max_sequence_length
         self.min_window_size = min_window_size
+
+        self.random_seed = random_seed
 
         self.df, self.umap, self.smap = self.preprocessing(
             file_path, min_sequence, mode)
@@ -176,8 +180,12 @@ class DataLoader():
         '''
             split train, test, valid
         '''
-        test_data = df[-num_test_data:]
-        used_df = df[:-num_test_data]
+        np.random.seed(self.random_seed)
+        test_idxs = np.random.choice(
+            len(df.index), num_test_data, replace=False)
+        train_valid_idxs = np.setdiff1d(range(len(df.index)), test_idxs)
+        test_data = df.iloc[test_idxs]
+        used_df = df.iloc[train_valid_idxs]
         random_selection = np.random.rand(len(used_df.index)) <= 0.85
         train_data = used_df[random_selection]
         valid_data = used_df[~random_selection]

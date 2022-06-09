@@ -20,8 +20,10 @@ parser.add_argument('--test', default=False, action='store_true',
 parser.add_argument('--checkpoint_step', type=int, default=-1,
                     help=('checkpoint iteration to load for resuming '
                           'training, or for evaluation (-1 is ignored)'))
-parser.add_argument('--num_test_data', type=int, default=500,
+parser.add_argument('--num_test_data', type=int, default=1000,
                     help=('the number of test data'))
+parser.add_argument('--random_seed', type=int, default=222,
+                    help=('test data random seed'))
 
 
 # hyperparmeters for training

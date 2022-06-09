@@ -24,7 +24,7 @@ class MAML:
         self.args = args
         self.batch_size = args.batch_size  # task batch size
         self.dataloader = DataLoader(
-            file_path=args.data_path, max_sequence_length=args.seq_len, min_sequence=5, min_window_size=args.min_window_size, samples_per_task=args.num_samples, num_test_data=args.num_test_data, default_rating=args.default_rating)
+            file_path=args.data_path, max_sequence_length=args.seq_len, min_sequence=5, min_window_size=args.min_window_size, samples_per_task=args.num_samples, num_test_data=args.num_test_data, random_seed=args.random_seed, mode=args.mode, default_rating=args.default_rating)
 
         # set # of users and # of items
         self.args.num_users = self.dataloader.num_users
