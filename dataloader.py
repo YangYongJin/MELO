@@ -264,10 +264,13 @@ class DataLoader():
         target_idx = np.random.randint(num_subsamples)
         return ratings, product_ids, normalized_num_samples, target_idx
 
-    def make_support_set(self, user_id, product_ids, ratings, target_idx, normalized=False):
+    def make_support_set(self, user_id, product_ids, ratings, target_idx, normalized=False, use_label=True):
         '''
             function that makes support set
             choose all except target index element
+
+            Args:
+                use_label : use label or not
         '''
         if target_idx >= (len(ratings)-1):
             support_idxs = torch.LongTensor(np.arange(target_idx))
@@ -282,8 +285,12 @@ class DataLoader():
             len(ratings)-1, 1)
 
         # make rating information based on supper ratings
-        rating_info = self.make_rating_info(
-            support_rating_history, normalized)
+        if use_label:
+            rating_info = self.make_rating_info(
+                support_target_rating, normalized)
+        else:
+            rating_info = self.make_rating_info(
+                support_rating_history, normalized)
 
         # set default rating for padding
         support_rating_history = support_rating_history + \
@@ -313,7 +320,7 @@ class DataLoader():
                       query_target_product, query_rating_history, query_target_rating)
         return query_data
 
-    def make_rating_info(self, support_rating_history, normalized=False):
+    def make_rating_info(self, ratings, normalized=False):
         '''
         function that makes task information about rating
         normalization option : rating with range(0,1)
@@ -323,22 +330,33 @@ class DataLoader():
             rating_mean: mean value of ratings
             rating_std: std value of ratings
         '''
-        total_ratings = (support_rating_history > 0).sum()
-        num_1 = (support_rating_history == 1).sum()/total_ratings
-        num_2 = (support_rating_history == 2).sum()/total_ratings
-        num_3 = (support_rating_history == 3).sum()/total_ratings
-        num_4 = (support_rating_history == 4).sum()/total_ratings
-        num_5 = (support_rating_history == 5).sum()/total_ratings
+        total_ratings = (ratings > 0).sum()
+        num_1 = int((ratings == 1).sum().item())
+        num_2 = int((ratings == 2).sum().item())
+        num_3 = int((ratings == 3).sum().item())
+        num_4 = int((ratings == 4).sum().item())
+        num_5 = int((ratings == 5).sum().item())
+
+        rating_info = num_1 * [1] + num_2 * [2] + \
+            num_3*[3] + num_4*[4] + num_5 * [5]
+
+        normalized_num_1 = num_1 / total_ratings
+        normalized_num_2 = num_2 / total_ratings
+        normalized_num_3 = num_3 / total_ratings
+        normalized_num_4 = num_4 / total_ratings
+        normalized_num_5 = num_5 / total_ratings
+
+        rating_info = torch.FloatTensor(rating_info)
 
         if normalized:
-            rating_mean = (support_rating_history/5.0).mean()
-            rating_std = (support_rating_history/5.0).std()
+            rating_mean = (rating_info/5.0).mean()
+            rating_std = (rating_info/5.0).std()
         else:
-            rating_mean = support_rating_history.mean()
-            rating_std = support_rating_history.std()
-        return [rating_mean, rating_std, num_1, num_2, num_3, num_4, num_5]
+            rating_mean = rating_info.mean()
+            rating_std = rating_info.std()
+        return [rating_mean, rating_std, normalized_num_1, normalized_num_2, normalized_num_3, normalized_num_4, normalized_num_5]
 
-    def generate_task(self, mode="train", batch_size=20, normalized=False):
+    def generate_task(self, mode="train", batch_size=20, normalized=False, use_label=True):
         '''
         generate batch of tasks
 
@@ -370,7 +388,7 @@ class DataLoader():
 
             # make support set and query set
             support_data, rating_info = self.make_support_set(
-                user_id, product_ids, ratings, target_idx, normalized)
+                user_id, product_ids, ratings, target_idx, normalized, use_label)
 
             query_data = self.make_query_set(
                 user_id, product_ids, ratings, target_idx)

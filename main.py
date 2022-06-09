@@ -355,7 +355,7 @@ class MAML:
 
         # set validation tasks
         val_batches = self.dataloader.generate_task(
-            mode="valid", batch_size=300, normalized=self.normalize_loss)
+            mode="valid", batch_size=300, normalized=self.normalize_loss, use_label=self.args.use_label)
 
         # iteration
         for i in range(1, train_steps+1):
@@ -363,7 +363,7 @@ class MAML:
 
             # generate train task batch
             train_task = self.dataloader.generate_task(
-                mode="train", batch_size=self.batch_size, normalized=self.normalize_loss)
+                mode="train", batch_size=self.batch_size, normalized=self.normalize_loss, use_label=self.args.use_label)
 
             # update meta paramters and return losses
             mse_loss, rmse_loss, mae_loss = self._outer_loop(
@@ -419,7 +419,7 @@ class MAML:
             Test on test batches
         '''
         test_batches = self.dataloader.generate_task(
-            mode="test", batch_size=500, normalized=self.normalize_loss)
+            mode="test", batch_size=500, normalized=self.normalize_loss, use_label=self.args.use_label)
         mse_loss, rmse_loss, mae_loss = self._outer_loop(
             test_batches, train=False)
         print(

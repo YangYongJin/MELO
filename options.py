@@ -69,6 +69,8 @@ parser.add_argument('--default_rating', type=int, default=1,
                     help='rating value for padding')
 parser.add_argument('--min_window_size', type=int, default=5,
                     help=('minimum sequence during subsampling'))
+parser.add_argument('--use_label', type=boolean_string, default=True,
+                    help='use label as task information or input rating data as task information')
 
 # training options
 parser.add_argument('--multi_step_loss_num_epochs', type=int, default=500,
