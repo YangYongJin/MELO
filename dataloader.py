@@ -13,7 +13,7 @@ ROOT_FOLDER = "Data"
 
 
 class DataLoader():
-    def __init__(self, file_path, max_sequence_length=10, min_sequence=5, min_window_size=2, samples_per_task=25, num_test_data=500,  random_seed=222, mode="ml-1m", default_rating=0, pretraining=False, pretraining_batch_size=None):
+    def __init__(self, file_path, max_sequence_length=10, min_sequence=5, min_window_size=2, samples_per_task=25, num_query_set=1, num_test_data=500,  random_seed=222, mode="ml-1m", default_rating=0, pretraining=False, pretraining_batch_size=None):
         '''
         Args:
             file_path : path of file containing target data
@@ -36,6 +36,7 @@ class DataLoader():
         self.min_window_size = min_window_size
 
         self.random_seed = random_seed
+        self.num_query_set = num_query_set
 
         self.df, self.umap, self.smap = self.preprocessing(
             file_path, min_sequence, mode)
@@ -260,11 +261,15 @@ class DataLoader():
         product_ids = torch.LongTensor(self.subsample(product_ids, rand_idxs))
         normalized_num_samples = num_subsamples/self.num_samples
 
-        # choose target index
-        target_idx = np.random.randint(num_subsamples)
-        return ratings, product_ids, normalized_num_samples, target_idx
+        # choose target indexes
+        num_query_set = self.num_query_set
+        if num_subsamples < self.num_query_set:
+            num_query_set = 1
+        target_idxs = np.random.choice(
+            num_subsamples, num_query_set, replace=False)
+        return ratings, product_ids, normalized_num_samples, target_idxs
 
-    def make_support_set(self, user_id, product_ids, ratings, target_idx, normalized=False, use_label=True):
+    def make_support_set(self, user_id, product_ids, ratings, target_idxs, normalized=False, use_label=True):
         '''
             function that makes support set
             choose all except target index element
@@ -272,17 +277,13 @@ class DataLoader():
             Args:
                 use_label : use label or not
         '''
-        if target_idx >= (len(ratings)-1):
-            support_idxs = torch.LongTensor(np.arange(target_idx))
-        else:
-            support_idxs = torch.cat((torch.LongTensor(np.arange(target_idx)), torch.LongTensor(
-                np.arange(target_idx+1, len(product_ids)))))
+        support_idxs = np.setdiff1d(range(len(product_ids)), target_idxs)
         support_product_history = product_ids[support_idxs, :-1]
         support_target_product = product_ids[support_idxs, -1:]
         support_rating_history = ratings[support_idxs, :-1]
         support_target_rating = ratings[support_idxs, -1:]
         support_user_id = user_id.repeat(
-            len(ratings)-1, 1)
+            len(support_idxs), 1)
 
         # make rating information based on supper ratings
         if use_label:
@@ -300,17 +301,17 @@ class DataLoader():
                         support_target_product, support_rating_history, support_target_rating)
         return support_data, rating_info
 
-    def make_query_set(self, user_id, product_ids, ratings, target_idx):
+    def make_query_set(self, user_id, product_ids, ratings, target_idxs):
         '''
             function that makes query set
             choose target index element
         '''
-        query_product_history = product_ids[target_idx:target_idx+1, :-1]
-        query_target_product = product_ids[target_idx:target_idx+1, -1:]
-        query_rating_history = ratings[target_idx:target_idx+1, :-1]
-        query_target_rating = ratings[target_idx:target_idx+1, -1:]
+        query_product_history = product_ids[target_idxs, :-1]
+        query_target_product = product_ids[target_idxs, -1:]
+        query_rating_history = ratings[target_idxs, :-1]
+        query_target_rating = ratings[target_idxs, -1:]
         query_user_id = user_id.repeat(
-            1, 1)
+            len(target_idxs), 1)
 
         # set default rating for padding
         query_rating_history = query_rating_history + \
@@ -383,15 +384,15 @@ class DataLoader():
             ratings = data.rating
 
             # subsamples
-            ratings, product_ids, normalized_num_samples, target_idx = self.preprocess_wt_subsampling(
+            ratings, product_ids, normalized_num_samples, target_idxs = self.preprocess_wt_subsampling(
                 product_ids, ratings)
 
             # make support set and query set
             support_data, rating_info = self.make_support_set(
-                user_id, product_ids, ratings, target_idx, normalized, use_label)
+                user_id, product_ids, ratings, target_idxs, normalized, use_label)
 
             query_data = self.make_query_set(
-                user_id, product_ids, ratings, target_idx)
+                user_id, product_ids, ratings, target_idxs)
 
             # make task information
             task_info = torch.Tensor(rating_info + [normalized_num_samples])

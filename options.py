@@ -65,6 +65,8 @@ parser.add_argument('--batch_size', type=int, default=25,
                     help='batch size')
 parser.add_argument('--num_samples', type=int, default=64,
                     help='number of subsamples')
+parser.add_argument('--num_query_set', type=int, default=1,
+                    help='number of query samples')
 parser.add_argument('--default_rating', type=int, default=1,
                     help='rating value for padding')
 parser.add_argument('--min_window_size', type=int, default=5,
