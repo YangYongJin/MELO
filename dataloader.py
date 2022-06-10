@@ -13,10 +13,10 @@ ROOT_FOLDER = "Data"
 
 
 class DataLoader():
-    def __init__(self, file_path, max_sequence_length=10, min_sequence=5, min_window_size=2, samples_per_task=25, num_query_set=1, num_test_data=500,  random_seed=222, mode="ml-1m", default_rating=0, pretraining=False, pretraining_batch_size=None):
+    def __init__(self, args, pretraining):
         '''
         Args:
-            file_path : path of file containing target data
+            data_path : path of file containing target data
             max_sequence_length : maximum sequence length to sample
             min_sequence : minimum sequence used to filter users
             min_window_size : minimum window size during subsampling
@@ -32,39 +32,45 @@ class DataLoader():
         # make data directory
         os.makedirs(os.path.join(os.path.abspath(
             '.'), ROOT_FOLDER), exist_ok=True)
-        self.max_sequence_length = max_sequence_length
-        self.min_window_size = min_window_size
+        self.max_sequence_length = args.seq_len
+        self.min_window_size = args.min_window_size
 
-        self.random_seed = random_seed
-        self.num_query_set = num_query_set
+        self.random_seed = args.random_seed
+        self.num_query_set = args.num_query_set
 
         self.df, self.umap, self.smap = self.preprocessing(
-            file_path, min_sequence, mode)
-        self.num_samples = samples_per_task
+            args.data_path, args.min_sequence, args.mode)
+        self.num_samples = args.num_samples
         self.train_set, self.valid_set, self.test_set = self.split_data(
-            self.df, num_test_data)
+            self.df, args.num_test_data)
         self.num_items = len(self.smap)
         self.num_users = len(self.umap)
         self.total_data_num = len(self.df)
 
-        self.default_rating = default_rating
+        self.default_rating = args.default_rating
+
+        # task information:
+        self.task_info_rating_mean = args.task_info_rating_mean
+        self.task_info_rating_std = args.task_info_rating_std
+        self.task_info_num_samples = args.task_info_num_samples
+        self.task_info_rating_distribution = args.task_info_rating_distribution
 
         # for pretraining (learn sigle bert)
-        if pretraining and pretraining_batch_size != None:
+        if pretraining and args.pretraining_batch_size != None:
             self.pretraining_train_loader = self.make_pretraining_dataloader(
-                self.train_set, pretraining_batch_size)
+                self.train_set, args.pretraining_batch_size)
             self.pretraining_valid_loader = self.make_pretraining_dataloader(
-                self.valid_set, pretraining_batch_size)
+                self.valid_set, args.pretraining_batch_size)
             self.pretraining_test_loader = self.make_pretraining_dataloader(
-                self.test_set, pretraining_batch_size)
+                self.test_set, args.pretraining_batch_size)
 
-    def preprocessing(self, file_path, min_sequence, mode="ml-1m"):
+    def preprocessing(self, data_path, min_sequence, mode="ml-1m"):
         '''
         Preprocessing data
         return data with user - sequence pairs
 
         Args:
-            file_path : path of file containing target data
+            data_path : path of file containing target data
             min_sequence : minimum sequence used to filter users
             mode : "amazon" or "ml-1m"
 
@@ -76,12 +82,12 @@ class DataLoader():
         print("Preprocessing Started")
         if mode == "ml-1m":
             self.download_raw_movielnes_data()
-            raw_df = pd.read_csv(file_path, sep='::',
+            raw_df = pd.read_csv(data_path, sep='::',
                                  header=None, engine="python")
             raw_df.columns = ['user_id', 'product_id', 'rating', 'date']
         elif mode == "amazon":
             # choose appropriate columns
-            raw_df = pd.read_csv(file_path, usecols=[
+            raw_df = pd.read_csv(data_path, usecols=[
                 'rating', 'reviewerID', 'product_id', 'date'])
             raw_df = raw_df.iloc[:500000, :]
             raw_df.rename(columns={'reviewerID': 'user_id'}, inplace=True)
@@ -355,7 +361,10 @@ class DataLoader():
         else:
             rating_mean = rating_info.mean()
             rating_std = rating_info.std()
-        return [rating_mean, rating_std, normalized_num_1, normalized_num_2, normalized_num_3, normalized_num_4, normalized_num_5]
+        rating_info = self.task_info_rating_mean*[rating_mean] + self.task_info_rating_std*[rating_std] + self.task_info_rating_distribution * [
+            normalized_num_1, normalized_num_2, normalized_num_3, normalized_num_4, normalized_num_5]
+
+        return rating_info
 
     def generate_task(self, mode="train", batch_size=20, normalized=False, use_label=True):
         '''
@@ -395,7 +404,8 @@ class DataLoader():
                 user_id, product_ids, ratings, target_idxs)
 
             # make task information
-            task_info = torch.Tensor(rating_info + [normalized_num_samples])
+            task_info = torch.Tensor(
+                rating_info + self.task_info_num_samples*[normalized_num_samples])
 
             tasks.append((support_data, query_data, task_info))
 

@@ -20,8 +20,7 @@ class Pretrain:
 
         self.args = args
         self.batch_size = args.batch_size
-        self.dataloader = DataLoader(
-            file_path=args.data_path, max_sequence_length=args.seq_len, min_sequence=5, min_window_size=args.min_window_size, samples_per_task=args.num_samples, num_test_data=args.num_test_data, random_seed=args.random_seed, mode=args.mode, default_rating=args.default_rating, pretraining=True, pretraining_batch_size=args.pretraining_batch_size)
+        self.dataloader = DataLoader(args, pretraining=True)
         self.pretraining_train_loader = self.dataloader.pretraining_train_loader
         self.pretraining_valid_loader = self.dataloader.pretraining_valid_loader
         self.args.num_users = self.dataloader.num_users

@@ -22,6 +22,8 @@ parser.add_argument('--checkpoint_step', type=int, default=-1,
                           'training, or for evaluation (-1 is ignored)'))
 parser.add_argument('--num_test_data', type=int, default=1000,
                     help=('the number of test data'))
+parser.add_argument('--min_sequence', type=int, default=20,
+                    help=('minimum number of reviews users should have'))
 parser.add_argument('--random_seed', type=int, default=222,
                     help=('test data random seed'))
 
@@ -85,6 +87,18 @@ parser.add_argument('--use_adaptive_loss_weight', type=boolean_string, default=T
                     help='use adaptive loss with weight')
 parser.add_argument('--normalize_loss', type=boolean_string, default=True,
                     help='use normalized ratings')
+
+# task information manipulation
+parser.add_argument('--task_info_loss', type=boolean_string, default=True,
+                    help='use loss as task information')
+parser.add_argument('--task_info_rating_mean', type=boolean_string, default=True,
+                    help='use mean rating as task information')
+parser.add_argument('--task_info_rating_std', type=boolean_string, default=True,
+                    help='use std of rating as task information')
+parser.add_argument('--task_info_num_samples', type=boolean_string, default=True,
+                    help='use the number of samples as task information')
+parser.add_argument('--task_info_rating_distribution', type=boolean_string, default=True,
+                    help='use the distribution of rating as task information')
 
 
 # pretraining options

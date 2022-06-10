@@ -23,8 +23,7 @@ class MAML:
 
         self.args = args
         self.batch_size = args.batch_size  # task batch size
-        self.dataloader = DataLoader(
-            file_path=args.data_path, max_sequence_length=args.seq_len, min_sequence=5, min_window_size=args.min_window_size, samples_per_task=args.num_samples, num_query_set=args.num_query_set, num_test_data=args.num_test_data, random_seed=args.random_seed, mode=args.mode, default_rating=args.default_rating)
+        self.dataloader = DataLoader(args, pretraining=False)
 
         # set # of users and # of items
         self.args.num_users = self.dataloader.num_users
@@ -81,14 +80,18 @@ class MAML:
         self.use_adaptive_loss = args.use_adaptive_loss
         self.use_adaptive_loss_weight = (
             args.use_adaptive_loss_weight and self.use_adaptive_loss)
-
+        num_loss_layers = None
         # settings for adaptive loss
         if self.use_adaptive_loss:
             self._loss_lr = args.loss_lr
+            self.task_info_loss = args.task_info_loss
+            num_loss_layers = self.task_info_loss * 1 + 1*args.task_info_rating_mean + 1 * \
+                args.task_info_rating_std + 1*args.task_info_num_samples + \
+                5*args.task_info_rating_distribution
             self.loss_network = nn.Sequential(
-                nn.Linear(9, 9),
+                nn.Linear(num_loss_layers, num_loss_layers),
                 nn.ReLU(),
-                nn.Linear(9, 1),
+                nn.Linear(num_loss_layers, 1),
             ).to(self.device)
             self.loss_optimizer = optim.Adam(
                 self.loss_network.parameters(), lr=self._loss_lr)
@@ -98,11 +101,12 @@ class MAML:
 
          # settings for adaptive loss weight
         if self.use_adaptive_loss_weight:
+            num_loss_weight_layers = num_loss_layers - self.task_info_loss * 1
             self._task_info_lr = args.task_info_lr
             self.task_info_network = nn.Sequential(
-                nn.Linear(8, 8),
+                nn.Linear(num_loss_weight_layers, num_loss_weight_layers),
                 nn.ReLU(),
-                nn.Linear(8, 1),
+                nn.Linear(num_loss_weight_layers, 1),
             ).to(self.device)
             self.task_info_optimizer = optim.Adam(
                 self.task_info_network.parameters(), lr=self._task_info_lr)
