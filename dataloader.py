@@ -1,4 +1,5 @@
 import numpy as np
+from sympy import N
 import torch
 import pandas as pd
 import shutil
@@ -49,6 +50,8 @@ class DataLoader():
 
         self.default_rating = args.default_rating
 
+        self.batch_idxs = []
+        self.batch_idx = 0
         # task information:
         self.task_info_rating_mean = args.task_info_rating_mean
         self.task_info_rating_std = args.task_info_rating_std
@@ -382,8 +385,24 @@ class DataLoader():
         elif mode == "test":
             data_set = self.test_set
         tasks = []
-        idxs = np.random.choice(len(data_set.index),
-                                batch_size, replace=False)
+
+        if mode == "train":
+            if len(self.batch_idxs) == 0:
+                self.batch_idxs = np.random.choice(len(data_set.index),
+                                                   len(data_set.index), replace=False)
+                idxs = self.batch_idxs[self.batch_idx:self.batch_idx+batch_size]
+                self.batch_idx += batch_size
+            else:
+                idxs = self.batch_idxs[self.batch_idx:self.batch_idx+batch_size]
+                self.batch_idx += batch_size
+                if self.batch_idx >= len(self.batch_idxs):
+                    self.batch_idx = 0
+                    print("Train All Users")
+
+        else:
+            idxs = np.random.choice(len(data_set.index),
+                                    batch_size, replace=False)
+
         for i in idxs:
             data = data_set.iloc[i]
             user_id = torch.tensor(data.user_id)
@@ -459,7 +478,8 @@ class SequenceDataset(data.Dataset):
         """
         seq_len = len(product_ids)
         maximum_len = seq_len if seq_len < self.max_len else self.max_len
-        window_size = np.random.randint(self.min_sub_window_size, maximum_len+1)
+        window_size = np.random.randint(
+            self.min_sub_window_size, maximum_len+1)
         start_idx = np.random.randint(0, seq_len - window_size + 1)
         product_ids_f = [0] * (self.max_len - window_size) + \
             list(product_ids[start_idx: start_idx+window_size])

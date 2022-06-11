@@ -1,6 +1,7 @@
 from .bert_modules.bert import BERT
 
 import torch.nn as nn
+import torch
 
 
 class BERTModel(nn.Module):
@@ -21,4 +22,4 @@ class BERTModel(nn.Module):
         x = self.dim_reduct(x)
         b, t, d = x.shape
         x = x.view(b, -1)  # Batch size x (t*d)
-        return self.out(x)
+        return 0.1 + torch.sigmoid(self.out(x))
