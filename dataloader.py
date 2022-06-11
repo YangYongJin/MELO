@@ -90,7 +90,6 @@ class DataLoader():
             raw_df = pd.read_csv(data_path, usecols=[
                 'rating', 'reviewerID', 'product_id', 'date'])
             raw_df.rename(columns={'reviewerID': 'user_id'}, inplace=True)
-            # raw_df.loc[:, 'rating'] = raw_df.loc[:, 'rating'].apply(lambda x: float(x))
 
         # filter user with lack of reviews
         raw_df = self.filter_triplets(raw_df, min_sequence)
