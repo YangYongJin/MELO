@@ -60,19 +60,20 @@ class MAML:
         # freeze bert model and only update last layers
         if args.freeze_bert:
             self.meta_optimizer = optim.Adam(
-                self.model.parameters(), lr=self._fc_lr)
+                self.model.parameters(), lr=self._fc_lr, weight_decay=args.fc_weight_decay)
         else:
             # apply different learning rate for bert and fc
             self.meta_optimizer = optim.Adam([
                 {'params': self.model.bert.parameters()},
-                {'params': self.model.dim_reduct.parameters(), 'lr': self._fc_lr},
-                {'params': self.model.out.parameters(), 'lr': self._fc_lr}
+                {'params': self.model.dim_reduct.parameters(), 'lr': self._fc_lr,
+                 'weight_decay': args.fc_weight_decay},
+                {'params': self.model.out.parameters(), 'lr': self._fc_lr,
+                 'weight_decay': args.fc_weight_decay}
             ], lr=self._outer_lr)
 
         # meta learning rate scheduler
-        self.meta_lr_scheduler = optim.lr_scheduler.\
-            MultiStepLR(self.meta_optimizer, milestones=[
-                        500, 800, 950], gamma=0.1)
+        self.meta_lr_scheduler = optim.lr_scheduler.CosineAnnealingLR(
+            self.meta_optimizer, T_max=args.num_train_iterations, eta_min=1e-6)
         # current epoch
         self._train_step = 0
 
@@ -330,10 +331,10 @@ class MAML:
             self.meta_lr_scheduler.step()
             if self.use_adaptive_loss:
                 self.loss_optimizer.step()
-                self.loss_lr_scheduler.step()
+                # self.loss_lr_scheduler.step()
             if self.use_adaptive_loss_weight:
                 self.task_info_optimizer.step()
-                self.task_info_lr_scheduler.step()
+                # self.task_info_lr_scheduler.step()
 
         # set results
         mse_loss = np.mean(mse_loss_batch)

@@ -193,6 +193,7 @@ class DataLoader():
         random_selection = np.random.rand(len(used_df.index)) <= 0.85
         train_data = used_df[random_selection]
         valid_data = used_df[~random_selection]
+        np.random.seed()
         return train_data, valid_data, test_data
 
     def cut_sequences(self, values, rand_idx):
