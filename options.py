@@ -44,8 +44,8 @@ parser.add_argument('--num_train_iterations', type=int, default=1000,
                     help='number of outer-loop updates to train for')
 
 # about bert model
-parser.add_argument('--seq_len', type=int, default=30,
-                    help='sequence length')
+parser.add_argument('--max_seq_len', type=int, default=30,
+                    help='maximum sequence length')
 parser.add_argument('--bert_num_blocks', type=int, default=2,
                     help='number of bert blocks')
 parser.add_argument('--bert_num_heads', type=int, default=4,
@@ -70,7 +70,7 @@ parser.add_argument('--num_query_set', type=int, default=1,
                     help='number of query samples')
 parser.add_argument('--default_rating', type=int, default=1,
                     help='rating value for padding')
-parser.add_argument('--min_window_size', type=int, default=5,
+parser.add_argument('--min_sub_window_size', type=int, default=2,
                     help=('minimum sequence during subsampling'))
 parser.add_argument('--use_label', type=boolean_string, default=True,
                     help='use label as task information or input rating data as task information')

@@ -19,7 +19,7 @@ class DataLoader():
             data_path : path of file containing target data
             max_sequence_length : maximum sequence length to sample
             min_sequence : minimum sequence used to filter users
-            min_window_size : minimum window size during subsampling
+            min_sub_window_size : minimum window size during subsampling
             samples_per_task : number of subsamples for each user
             num_test_data : the number of test data
             random_seed : random seed for test data sampling
@@ -32,8 +32,8 @@ class DataLoader():
         # make data directory
         os.makedirs(os.path.join(os.path.abspath(
             '.'), ROOT_FOLDER), exist_ok=True)
-        self.max_sequence_length = args.seq_len
-        self.min_window_size = args.min_window_size
+        self.max_sequence_length = args.max_seq_len
+        self.min_sub_window_size = args.min_sub_window_size
 
         self.random_seed = args.random_seed
         self.num_query_set = args.num_query_set
@@ -90,7 +90,6 @@ class DataLoader():
             raw_df = pd.read_csv(data_path, usecols=[
                 'rating', 'reviewerID', 'product_id', 'date'])
             raw_df.rename(columns={'reviewerID': 'user_id'}, inplace=True)
-            # raw_df.loc[:, 'rating'] = raw_df.loc[:, 'rating'].apply(lambda x: float(x))
 
         # filter user with lack of reviews
         raw_df = self.filter_triplets(raw_df, min_sequence)
@@ -233,7 +232,7 @@ class DataLoader():
         '''
         sequences = []
         max_window_size = len(values)
-        for window_size in range(self.min_window_size, max_window_size+1):
+        for window_size in range(self.min_sub_window_size, max_window_size+1):
             for start_idx in range(max_window_size-window_size+1):
                 sequence = [0] * (self.max_sequence_length - window_size) + \
                     list(values[start_idx: start_idx+window_size])
@@ -256,8 +255,8 @@ class DataLoader():
         '''
         ratings, product_ids = self.get_sliced_sequences(product_ids, ratings)
         # number of subsamples (1+2+ ... + n-min_window+1 = (n-min_window+2)*(n-min_window+1)/2)
-        cur_num_samples = (len(ratings)-self.min_window_size+2) * \
-            (len(ratings)-self.min_window_size+1)//2
+        cur_num_samples = (len(ratings)-self.min_sub_window_size+2) * \
+            (len(ratings)-self.min_sub_window_size+1)//2
         num_subsamples = cur_num_samples if cur_num_samples < self.num_samples else self.num_samples
         rand_idxs = np.random.choice(
             cur_num_samples, num_subsamples, replace=False)
@@ -419,7 +418,7 @@ class DataLoader():
             dataloader: torch dataloader
         '''
         dataset = SequenceDataset(
-            df, self.max_sequence_length, self.min_window_size, self.default_rating)
+            df, self.max_sequence_length, self.min_sub_window_size, self.default_rating)
         dataloader = torch.utils.data.DataLoader(
             dataset,
             batch_size=batch_size,
@@ -435,18 +434,18 @@ class SequenceDataset(data.Dataset):
     """
 
     def __init__(
-        self, df, max_len, min_window_size=2, default_rating=0
+        self, df, max_len, min_sub_window_size=2, default_rating=0
     ):
         """
         Args:
             df: preprocessed data
             max_len: max sequence length
-            min_window_size : minimum window size during subsampling
+            min_sub_window_size : minimum window size during subsampling
             default_rating: rating of padding
         """
         self.ratings_frame = df
         self.max_len = max_len
-        self.min_window_size = min_window_size
+        self.min_sub_window_size = min_sub_window_size
         self.default_rating = default_rating
 
     def __len__(self):
@@ -455,11 +454,11 @@ class SequenceDataset(data.Dataset):
     def preprocessing(self, product_ids, ratings):
         """
             function that makes single random sequence for each user
-            sequence length ranges from min_window_size to max_len
+            sequence length ranges from min_sub_window_size to max_len
         """
         seq_len = len(product_ids)
         maximum_len = seq_len if seq_len < self.max_len else self.max_len
-        window_size = np.random.randint(self.min_window_size, maximum_len+1)
+        window_size = np.random.randint(self.min_sub_window_size, maximum_len+1)
         start_idx = np.random.randint(0, seq_len - window_size + 1)
         product_ids_f = [0] * (self.max_len - window_size) + \
             list(product_ids[start_idx: start_idx+window_size])
@@ -489,7 +488,7 @@ class SequenceDataset(data.Dataset):
         return (user_id, product_history, target_product_id,  product_history_ratings), target_product_rating
 
 
-# dataloader = DataLoader('./Data/ml-1m/ratings.dat', max_sequence_length=30, min_sequence=5, min_window_size=15,
+# dataloader = DataLoader('./Data/ml-1m/ratings.dat', max_sequence_length=30, min_sequence=5, min_sub_window_size=15,
 #                         samples_per_task=64, num_test_data=500,  mode="ml-1m", default_rating=1, pretraining=False, pretraining_batch_size=None)
 # tasks = dataloader.generate_task(mode="train", batch_size=25, normalized=True)
 # support, query, task = tasks[0]
