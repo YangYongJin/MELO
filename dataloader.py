@@ -72,7 +72,7 @@ class DataLoader():
         Args:
             data_path : path of file containing target data
             min_sequence : minimum sequence used to filter users
-            mode : "amazon" or "ml-1m"
+            mode : "amazon-vgames" or "ml-1m"
 
         return:
             df : preprocessed data
@@ -85,14 +85,12 @@ class DataLoader():
             raw_df = pd.read_csv(data_path, sep='::',
                                  header=None, engine="python")
             raw_df.columns = ['user_id', 'product_id', 'rating', 'date']
-        elif mode == "amazon":
+        elif mode == "amazon-vgames":
             # choose appropriate columns
             raw_df = pd.read_csv(data_path, usecols=[
                 'rating', 'reviewerID', 'product_id', 'date'])
-            raw_df = raw_df.iloc[:500000, :]
             raw_df.rename(columns={'reviewerID': 'user_id'}, inplace=True)
-            raw_df.loc[:, 'rating'] = raw_df.loc[:,
-                                                 'rating'].apply(lambda x: float(x))
+            # raw_df.loc[:, 'rating'] = raw_df.loc[:, 'rating'].apply(lambda x: float(x))
 
         # filter user with lack of reviews
         raw_df = self.filter_triplets(raw_df, min_sequence)
