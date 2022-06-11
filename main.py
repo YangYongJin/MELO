@@ -328,7 +328,7 @@ class MAML:
         # Update meta parameters
         if train:
             self.meta_optimizer.step()
-            self.meta_lr_scheduler.step()
+            # self.meta_lr_scheduler.step()
             if self.use_adaptive_loss:
                 self.loss_optimizer.step()
                 # self.loss_lr_scheduler.step()
