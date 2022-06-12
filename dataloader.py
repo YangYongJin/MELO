@@ -75,7 +75,7 @@ class DataLoader():
         Args:
             data_path : path of file containing target data
             min_sequence : minimum sequence used to filter users
-            mode : "amazon-vgames" or "ml-1m"
+            mode : "amazon" or "ml-1m"
 
         return:
             df : preprocessed data
@@ -88,7 +88,7 @@ class DataLoader():
             raw_df = pd.read_csv(data_path, sep='::',
                                  header=None, engine="python")
             raw_df.columns = ['user_id', 'product_id', 'rating', 'date']
-        elif mode == "amazon-vgames":
+        elif mode == "amazon":
             # choose appropriate columns
             raw_df = pd.read_csv(data_path, usecols=[
                 'rating', 'reviewerID', 'product_id', 'date'])
