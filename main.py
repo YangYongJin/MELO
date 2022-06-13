@@ -14,8 +14,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 # SAVE_INTERVAL = 50
 LOG_INTERVAL = 1
-VAL_INTERVAL = 50
-NUM_TEST_TASKS = 100
+VAL_INTERVAL = 25
 
 
 class MAML:
@@ -445,8 +444,15 @@ class MAML:
                 def map_location(storage, loc): return storage.cuda()
             else:
                 map_location = 'cpu'
+            checkpoint = torch.load(target_path)
             self.model.load_state_dict(torch.load(
-                target_path, map_location=map_location))
+                checkpoint['meta_model'], map_location=map_location))
+            if self.use_adaptive_loss:
+                self.loss_network.load_state_dict(torch.load(
+                    checkpoint['loss_model'], map_location=map_location))
+            if self.use_adaptive_loss_weight:
+                self.task_info_network.load_state_dict(torch.load(
+                    checkpoint['loss_weight_model'], map_location=map_location))
 
         except:
             raise ValueError(
@@ -456,8 +462,15 @@ class MAML:
         '''
             save meta paramters
         '''
-        torch.save(self.model.state_dict(),
-                   os.path.join(self._save_dir, f"{self._train_step}_best"))
+        save_path = os.path.join(self._save_dir, f"{self._train_step}_best.pt")
+        model_dict = {
+            'meta_model': self.model.state_dict()
+        }
+        if self.use_adaptive_loss:
+            model_dict['loss_model'] = self.loss_network.state_dict()
+        if self.use_adaptive_loss_weight:
+            model_dict['loss_weight_model'] = self.task_info_network.state_dict()
+        torch.save(model_dict, save_path)
 
     def load_pretrained_bert(self, filename):
         '''
