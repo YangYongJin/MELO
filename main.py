@@ -445,15 +445,12 @@ class MAML:
                 def map_location(storage, loc): return storage.cuda()
             else:
                 map_location = 'cpu'
-            checkpoint = torch.load(target_path)
-            self.model.load_state_dict(torch.load(
-                checkpoint['meta_model'], map_location=map_location))
+            checkpoint = torch.load(target_path, map_location=map_location)
+            self.model.load_state_dict(checkpoint['meta_model'])
             if self.use_adaptive_loss:
-                self.loss_network.load_state_dict(torch.load(
-                    checkpoint['loss_model'], map_location=map_location))
+                self.loss_network.load_state_dict(checkpoint['loss_model'])
             if self.use_adaptive_loss_weight:
-                self.task_info_network.load_state_dict(torch.load(
-                    checkpoint['loss_weight_model'], map_location=map_location))
+                self.task_info_network.load_state_dict(checkpoint['loss_weight_model'])
 
         except:
             raise ValueError(
