@@ -437,7 +437,8 @@ class MAML:
         '''
             load meta paramters
         '''
-        target_path = os.path.join(self._save_dir, f"{checkpoint_step}_best")
+        target_path = os.path.join(
+            self._save_dir, f"{checkpoint_step}_best.pt")
         print("Loading checkpoint from", target_path)
         try:
             if torch.cuda.is_available():
