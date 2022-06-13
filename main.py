@@ -424,7 +424,7 @@ class MAML:
             Test on test batches
         '''
         test_batches = self.dataloader.generate_task(
-            mode="test", batch_size=500, normalized=self.normalize_loss, use_label=self.args.use_label)
+            mode="test", batch_size=self.args.num_test_data, normalized=self.normalize_loss, use_label=self.args.use_label)
         mse_loss, rmse_loss, mae_loss = self._outer_loop(
             test_batches, train=False)
         print(

@@ -193,10 +193,10 @@ class DataLoader():
         train_valid_idxs = np.setdiff1d(range(len(df.index)), test_idxs)
         test_data = df.iloc[test_idxs]
         used_df = df.iloc[train_valid_idxs]
+        np.random.seed()
         random_selection = np.random.rand(len(used_df.index)) <= 0.85
         train_data = used_df[random_selection]
         valid_data = used_df[~random_selection]
-        np.random.seed()
         return train_data, valid_data, test_data
 
     def cut_sequences(self, values, rand_idx):
