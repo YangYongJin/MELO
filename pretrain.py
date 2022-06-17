@@ -41,8 +41,8 @@ class Pretrain:
         self._lr = args.pretraining_lr
         self.optimizer = optim.Adam([
             {'params': self.model.bert.parameters()},
-            {'params': self.model.dim_reduct.parameters(), 'lr': 1e-2},
-            {'params': self.model.out.parameters(), 'lr': 1e-2}
+            {'params': self.model.dim_reduct.parameters(), 'lr': args.fc_lr},
+            {'params': self.model.out.parameters(), 'lr': args.fc_lr}
         ], lr=self._lr)
 
         self.loss_fn = nn.MSELoss()

@@ -113,7 +113,7 @@ parser.add_argument('--load_pretrained', type=boolean_string, default=False,
                     help='load pretrained model or not')
 parser.add_argument('--freeze_bert', type=boolean_string, default=False,
                     help='freeze bert model or not')
-parser.add_argument('--load_save_bert', type=boolean_string, default=True,
+parser.add_argument('--load_save_bert', type=boolean_string, default=False,
                     help='load and save bert or whole model at pretrain.py')
 parser.add_argument('--pretrain_log_dir', type=str, default='./log_pretrained',
                     help='directory to save to or load from pretrained')
