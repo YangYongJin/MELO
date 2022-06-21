@@ -12,7 +12,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 SAVE_INTERVAL = 100
 LOG_INTERVAL = 1
-VAL_INTERVAL = 10
+VAL_INTERVAL = 25
 
 
 class Pretrain:
@@ -23,6 +23,7 @@ class Pretrain:
         self.dataloader = DataLoader(args, pretraining=True)
         self.pretraining_train_loader = self.dataloader.pretraining_train_loader
         self.pretraining_valid_loader = self.dataloader.pretraining_valid_loader
+        self.pretraining_test_loader = self.dataloader.pretraining_test_loader
         self.args.num_users = self.dataloader.num_users
         self.args.num_items = self.dataloader.num_items
 
@@ -41,8 +42,10 @@ class Pretrain:
         self._lr = args.pretraining_lr
         self.optimizer = optim.Adam([
             {'params': self.model.bert.parameters()},
-            {'params': self.model.dim_reduct.parameters(), 'lr': args.fc_lr},
-            {'params': self.model.out.parameters(), 'lr': args.fc_lr}
+            {'params': self.model.dim_reduct.parameters(), 'lr': args.fc_lr,
+             'weight_decay': args.fc_weight_decay},
+            {'params': self.model.out.parameters(), 'lr': args.fc_lr,
+             'weight_decay': args.fc_weight_decay}
         ], lr=self._lr)
 
         self.loss_fn = nn.MSELoss()
@@ -69,9 +72,20 @@ class Pretrain:
         mse_losses = []
         mae_losses = []
         rmse_losses = []
+        if train:
+            self.model.train()
+        else:
+            self.model.eval()
         # one epoch opeartion
         for input, target_rating in tqdm(data_loader):
             user_id, product_history, target_product_id,  product_history_ratings = input
+
+            B, S, T = product_history.shape
+            user_id = user_id.view(-1, 1)
+            product_history = product_history.view(-1, T)
+            target_product_id = target_product_id.view(-1, 1)
+            product_history_ratings = product_history_ratings.view(-1, T)
+            target_rating = target_rating.view(-1, 1)
 
             # gpu loading
             x_inputs = (user_id.to(self.device), product_history.to(
@@ -164,7 +178,7 @@ class Pretrain:
                         f'........Model saved (step: {self.best_step} | RMSE loss: {rmse_loss:.3f})')
 
             self._train_step += 1
-            self.lr_scheduler.step()
+            # self.lr_scheduler.step()
         writer.close()
 
     def load(self, checkpoint_step):

@@ -107,7 +107,7 @@ parser.add_argument('--pretraining_batch_size', type=int, default=128,
                     help='batch size during pretraining')
 parser.add_argument('--pretrain_epochs', type=int, default=1000,
                     help='the number of epochs for pretraining')
-parser.add_argument('--pretraining_lr', type=float, default=0.0001,
+parser.add_argument('--pretraining_lr', type=float, default=1e-4,
                     help='learning rate during pretraining')
 parser.add_argument('--load_pretrained', type=boolean_string, default=False,
                     help='load pretrained model or not')

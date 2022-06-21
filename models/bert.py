@@ -12,7 +12,7 @@ class BERTModel(nn.Module):
         self.dim_reduct = nn.Linear(self.bert.hidden, 16)
         self.out = nn.Sequential(
             nn.ReLU(),
-            nn.Linear(16*(args.max_seq_len+1), 128),
+            nn.Linear(16*(args.max_seq_len), 128),
             nn.ReLU(),
             nn.Linear(128, 1),
         )

@@ -1,5 +1,4 @@
 import numpy as np
-from sympy import N
 import torch
 import pandas as pd
 import shutil
@@ -65,7 +64,7 @@ class DataLoader():
             self.pretraining_valid_loader = self.make_pretraining_dataloader(
                 self.valid_set, args.pretraining_batch_size)
             self.pretraining_test_loader = self.make_pretraining_dataloader(
-                self.test_set, args.pretraining_batch_size)
+                self.test_set, args.pretraining_batch_size, num_queries=args.num_query_set)
 
     def preprocessing(self, data_path, min_sequence, mode="ml-1m"):
         '''
@@ -428,7 +427,7 @@ class DataLoader():
 
         return tasks
 
-    def make_pretraining_dataloader(self, df, batch_size=128):
+    def make_pretraining_dataloader(self, df, batch_size=128, num_queries=1):
         '''
         funtion that makes dataloader for pretraining(single bert model)
         Args:
@@ -438,7 +437,7 @@ class DataLoader():
             dataloader: torch dataloader
         '''
         dataset = SequenceDataset(
-            df, self.max_sequence_length, self.min_sub_window_size, self.default_rating)
+            df, self.max_sequence_length, self.min_sub_window_size, self.default_rating, num_queries)
         dataloader = torch.utils.data.DataLoader(
             dataset,
             batch_size=batch_size,
@@ -454,7 +453,7 @@ class SequenceDataset(data.Dataset):
     """
 
     def __init__(
-        self, df, max_len, min_sub_window_size=2, default_rating=0
+        self, df, max_len, min_sub_window_size=2, default_rating=0, num_queries=1
     ):
         """
         Args:
@@ -467,6 +466,7 @@ class SequenceDataset(data.Dataset):
         self.max_len = max_len
         self.min_sub_window_size = min_sub_window_size
         self.default_rating = default_rating
+        self.num_queries = num_queries
 
     def __len__(self):
         return len(self.ratings_frame)
@@ -481,12 +481,19 @@ class SequenceDataset(data.Dataset):
         window_size = np.random.randint(
             self.min_sub_window_size, maximum_len+1)
         start_idx = np.random.randint(0, seq_len - window_size + 1)
-        product_ids_f = [0] * (self.max_len - window_size) + \
-            list(product_ids[start_idx: start_idx+window_size])
-        ratings_f = [0] * (self.max_len - window_size) + \
-            list(ratings[start_idx: start_idx+window_size])
-        product_ids_f = torch.LongTensor(product_ids_f)
-        ratings_f = torch.FloatTensor(ratings_f)
+        product_lst = []
+        rating_lst = []
+        for _ in range(self.num_queries):
+            product_ids_im = [0] * (self.max_len - window_size) + \
+                list(product_ids[start_idx: start_idx+window_size])
+            ratings_im = [0] * (self.max_len - window_size) + \
+                list(ratings[start_idx: start_idx+window_size])
+            product_ids_im = torch.LongTensor(product_ids_im).view(1, -1)
+            ratings_im = torch.FloatTensor(ratings_im).view(1, -1)
+            product_lst.append(product_ids_im)
+            rating_lst.append(ratings_im)
+        product_ids_f = torch.cat(product_lst, axis=0)
+        ratings_f = torch.cat(rating_lst, axis=0)
         return product_ids_f, ratings_f
 
     def __getitem__(self, idx):
@@ -501,10 +508,18 @@ class SequenceDataset(data.Dataset):
         # if we want default ratings 1
         ratings = ratings + self.default_rating*(ratings == 0)
 
-        product_history = product_ids[:-1]
-        target_product_id = product_ids[-1:][0].reshape(1)
-        product_history_ratings = ratings[:-1]
-        target_product_rating = ratings[-1:][0].reshape(1)
+        b, l = ratings.shape
+        product_history = product_ids[:, :-1]
+        target_product_id = product_ids[:, -1:]
+        product_history_ratings = ratings[:, :-1]
+        target_product_rating = ratings[:, -1:]
+        user_id = user_id.repeat(
+            self.num_queries, 1)
+        # if self.num_queries == 1:
+        #     product_history = product_history.view(l-1)
+        #     target_product_id = target_product_id.view(1)
+        #     product_history_ratings = product_history_ratings.view(l-1)
+        #     target_product_rating = target_product_rating.view(1)
 
         return (user_id, product_history, target_product_id,  product_history_ratings), target_product_rating
 

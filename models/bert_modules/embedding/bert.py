@@ -23,8 +23,8 @@ class BERTEmbedding(nn.Module):
         super().__init__()
         self.token = TokenEmbedding(
             vocab_size=vocab_size, embed_size=embed_size)
-        self.user_embedding = TokenEmbedding(
-            vocab_size=user_size, embed_size=embed_size)
+        # self.user_embedding = TokenEmbedding(
+        #     vocab_size=user_size, embed_size=embed_size)
         self.position = PositionalEmbedding(
             max_len=max_len, d_model=embed_size)
         # self.segment = SegmentEmbedding(embed_size=self.token.embedding_dim)
@@ -37,8 +37,10 @@ class BERTEmbedding(nn.Module):
 
         x = self.token(product_history) + self.position(product_history)
         B, T = product_history_ratings.shape
-        user_info = self.user_embedding(user_id).view(B, 1, -1)
+
+        # user_info = self.user_embedding(user_id).view(B, 1, -1)
         target_info = self.token(target_product_id).view(B, 1, -1)
         x = x*product_history_ratings.view(B, T, 1)
-        x = torch.cat([user_info, x, target_info], dim=1)
+        # x = torch.cat([user_info, x, target_info], dim=1)
+        x = torch.cat([x, target_info], dim=1)
         return self.dropout(x)
