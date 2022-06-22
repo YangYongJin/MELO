@@ -149,9 +149,9 @@ class Pretrain:
             if self._train_step % LOG_INTERVAL == 0:
                 print(
                     f'Epoch {self._train_step}: '
-                    f'MSE loss: {mse_loss:.3f} | '
-                    f'RMSE loss: {rmse_loss:.3f} | '
-                    f'MAE loss: {mae_loss:.3f} | '
+                    f'MSE loss: {mse_loss:.4f} | '
+                    f'RMSE loss: {rmse_loss:.4f} | '
+                    f'MAE loss: {mae_loss:.4f} | '
                 )
                 writer.add_scalar(
                     "train/MSEloss", mse_loss, self._train_step)
@@ -164,9 +164,9 @@ class Pretrain:
 
                 print(
                     f'\tValidation: '
-                    f'Val MSE loss: {mse_loss:.3f} | '
-                    f'Val RMSE loss: {rmse_loss:.3f} | '
-                    f'Val MAE loss: {mae_loss:.3f} | '
+                    f'Val MSE loss: {mse_loss:.4f} | '
+                    f'Val RMSE loss: {rmse_loss:.4f} | '
+                    f'Val MAE loss: {mae_loss:.4f} | '
                 )
 
                 # Save the best model wrt valid rmse loss
@@ -175,11 +175,16 @@ class Pretrain:
                     self.best_step = epoch
                     self._save_model()
                     print(
-                        f'........Model saved (step: {self.best_step} | RMSE loss: {rmse_loss:.3f})')
+                        f'........Model saved (step: {self.best_step} | RMSE loss: {rmse_loss:.4f})')
 
             self._train_step += 1
             # self.lr_scheduler.step()
         writer.close()
+        print("-------------------------------------------------")
+        print("Model with the best validation RMSE loss is saved.")
+        print(f'Best step: {self.best_step}')
+        print(f'Best RMSE loss: {self.best_valid_rmse_loss:.4f}')
+        print("Done.")
 
     def load(self, checkpoint_step):
         '''
@@ -228,9 +233,9 @@ class Pretrain:
 
         print(
             f'\tTest: '
-            f'Test MSE loss: {mse_loss:.3f} | '
-            f'Test RMSE loss: {rmse_loss:.3f} | '
-            f'Test MAE loss: {mae_loss:.3f} | '
+            f'Test MSE loss: {mse_loss:.4f} | '
+            f'Test RMSE loss: {rmse_loss:.4f} | '
+            f'Test MAE loss: {mae_loss:.4f} | '
         )
 
 

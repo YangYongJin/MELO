@@ -72,7 +72,7 @@ parser.add_argument('--num_query_set', type=int, default=16,
                     help='number of query samples')
 parser.add_argument('--default_rating', type=int, default=1,
                     help='rating value for padding')
-parser.add_argument('--min_sub_window_size', type=int, default=15,
+parser.add_argument('--min_sub_window_size', type=int, default=10,
                     help=('minimum sequence during subsampling'))
 parser.add_argument('--use_label', type=boolean_string, default=True,
                     help='use label as task information or input rating data as task information')
@@ -107,7 +107,7 @@ parser.add_argument('--pretraining_batch_size', type=int, default=128,
                     help='batch size during pretraining')
 parser.add_argument('--pretrain_epochs', type=int, default=1000,
                     help='the number of epochs for pretraining')
-parser.add_argument('--pretraining_lr', type=float, default=1e-4,
+parser.add_argument('--pretraining_lr', type=float, default=1e-3,
                     help='learning rate during pretraining')
 parser.add_argument('--load_pretrained', type=boolean_string, default=False,
                     help='load pretrained model or not')
