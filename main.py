@@ -433,6 +433,31 @@ class MAML:
             f'Test MAE loss: {mae_loss:.4f} | '
         )
 
+    def test_baseline(self):
+        '''
+            Test on test batches
+        '''
+        mean_rating = self.dataloader.train_set['rating'].mean()
+        test_batches = self.dataloader.generate_task(
+            mode="test", batch_size=self.args.num_test_data, normalized=self.normalize_loss, use_label=self.args.use_label)
+        for idx, task in enumerate(tqdm(test_batches)):
+            # query data gpu loading
+            _, query, _ = task
+            _, _, _,  _, target_rating = query
+            query_target_rating = target_rating.to(self.device)
+            query_predict_rating = torch.ones_like(
+                target_rating).to(self.device)
+            nn.MSELoss()
+
+        mse_loss, rmse_loss, mae_loss = self._outer_loop(
+            test_batches, train=False)
+        print(
+            f'\tTest: '
+            f'Test MSE loss: {mse_loss:.4f} | '
+            f'Test RMSE loss: {rmse_loss:.4f} | '
+            f'Test MAE loss: {mae_loss:.4f} | '
+        )
+
     def load(self, checkpoint_step):
         '''
             load meta paramters
@@ -450,7 +475,8 @@ class MAML:
             if self.use_adaptive_loss:
                 self.loss_network.load_state_dict(checkpoint['loss_model'])
             if self.use_adaptive_loss_weight:
-                self.task_info_network.load_state_dict(checkpoint['loss_weight_model'])
+                self.task_info_network.load_state_dict(
+                    checkpoint['loss_weight_model'])
 
         except:
             raise ValueError(

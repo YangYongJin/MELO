@@ -478,16 +478,19 @@ class SequenceDataset(data.Dataset):
         """
         seq_len = len(product_ids)
         maximum_len = seq_len if seq_len < self.max_len else self.max_len
-        window_size = np.random.randint(
-            self.min_sub_window_size, maximum_len+1)
-        start_idx = np.random.randint(0, seq_len - window_size + 1)
+
+        start_idx = np.random.randint(0, seq_len - maximum_len + 1)
         product_lst = []
         rating_lst = []
         for _ in range(self.num_queries):
+            window_size = np.random.randint(
+                self.min_sub_window_size, maximum_len+1)
+            start_idx_im = np.random.randint(
+                start_idx, maximum_len - window_size + start_idx + 1)
             product_ids_im = [0] * (self.max_len - window_size) + \
-                list(product_ids[start_idx: start_idx+window_size])
+                list(product_ids[start_idx_im: start_idx_im+window_size])
             ratings_im = [0] * (self.max_len - window_size) + \
-                list(ratings[start_idx: start_idx+window_size])
+                list(ratings[start_idx_im: start_idx_im+window_size])
             product_ids_im = torch.LongTensor(product_ids_im).view(1, -1)
             ratings_im = torch.FloatTensor(ratings_im).view(1, -1)
             product_lst.append(product_ids_im)
