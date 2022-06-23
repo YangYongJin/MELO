@@ -437,20 +437,29 @@ class MAML:
         '''
             Test on test batches
         '''
-        mean_rating = self.dataloader.train_set['rating'].mean()
+
+        rating_lst = sum(self.dataloader.train_set['rating'].tolist(), [])
+        mean_rating = np.mean(rating_lst, dtype='float32')
+        print(mean_rating)
         test_batches = self.dataloader.generate_task(
             mode="test", batch_size=self.args.num_test_data, normalized=self.normalize_loss, use_label=self.args.use_label)
+        mse_loss_batch = []
+        mae_loss_batch = []
         for idx, task in enumerate(tqdm(test_batches)):
             # query data gpu loading
             _, query, _ = task
             _, _, _,  _, target_rating = query
             query_target_rating = target_rating.to(self.device)
             query_predict_rating = torch.ones_like(
-                target_rating).to(self.device)
-            nn.MSELoss()
+                target_rating).to(self.device) * mean_rating
+            mse_loss = nn.MSELoss()(query_predict_rating, query_target_rating).to("cpu").item()
+            mae_loss = nn.L1Loss()(query_predict_rating, query_target_rating).to("cpu").item()
+            mse_loss_batch.append(mse_loss)
+            mae_loss_batch.append(mae_loss)
 
-        mse_loss, rmse_loss, mae_loss = self._outer_loop(
-            test_batches, train=False)
+        mse_loss = np.mean(mse_loss_batch)
+        rmse_loss = np.sqrt(mse_loss)
+        mae_loss = np.mean(mae_loss_batch)
         print(
             f'\tTest: '
             f'Test MSE loss: {mse_loss:.4f} | '
@@ -560,6 +569,7 @@ def main(args):
 
     if not args.test:
         maml.train(args.num_train_iterations)
+        # maml.test_baseline()
 
     else:
         maml.test()
