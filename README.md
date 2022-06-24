@@ -1,48 +1,75 @@
-# BERT4REC_MAML  
-BERT4REC_MAML is implementation of maml with task adaptive loss using bert4rec model<br/>
-BERT4REC model reference code: https://github.com/jaywonchung/BERT4Rec-VAE-Pytorch  
-<br/>
+# Introduction
 
-## Dependencies  
+BERT4REC_MAML is implementation of MAML with task adaptive loss using BERT4REC model
+
+> **BERT4REC model reference code: https://github.com/jaywonchung/BERT4Rec-VAE-Pytorch**
+
+> **BERT4Rec: Sequential Recommendation with BERT (Sun et al.)**
+
+> **METAL: Meta-Learning with Task-Adaptive Loss Function for Few-Shot Learning (Baik et al.)** 
+
+
+
+# Dependencies  
 * pytorch 
 * tqdm 
 * tensorboard
 * wget  
 <br/>
 
-## Usage
+# Usage
 <br/>
-<b> Please read options.py carefully to choose correct learner </b>
+Please read <strong>options.py</strong> carefully to adjust multiple options
 <br/>
-<br/>
-Basic options
 
-* maml with adaptive loss & multi step loss & adaptive loss weight
+
+## Training
+
+* MAML with Adaptive Loss(Proposed Method) on Movielens Data
 ```bash 
 python main.py
 ```
-* maml without multi step loss
-```bash 
-python main.py --use_multi_step=False
-```
 
-* FO-MAML
+* FO-MAML on Movielens Data
 ```bash 
 python main.py --use_multi_step=False --use_adaptive_loss=False
 ```
 
-* test on Amazon dataset(example)
-place amazon dataset csv file at Data/
+* Training on Amazon dataset(example)
+place amazon ratings dataset(csv file) at Data/amazon/
 ```bash 
-python main.py --mode=amazon --data_path=./Data/Office_Products.csv --min_window_size=2 --seq_len=10
+python main.py --mode=amazon --data_path=./Data/amazon/grocery_ratings.csv --min_sub_window_size=2 --max_seq_len=30 --num_samples=25 --num_query_set=1
 ```
+
+## Test
+
+* Test on Movielens Data using model of nth iterations 
+```bash 
+python main.py --checkpoint_step=n --test
+```
+
+* Test on Amazon Data using model of nth iterations
+```bash 
+python main.py --mode=amazon --data_path=./Data/amazon/grocery_ratings.csv --min_sub_window_size=2 --max_seq_len=30 --num_samples=25 --num_query_set=1 --checkpoint_step=n --test
+```
+
+## Train Bert4rec Model(without meta learning)
+* Train on Movielens Data
+```bash 
+python pretrain.py
+```
+
+* Test on Movielens Data using model of nth iterations
+```bash 
+python pretrain.py --checkpoint_step=n --test
+```
+
 <br/>
 
 ## Files
-"models" folder     : bert4rec models<br/> 
-"dataloader" file   : data preprocessing and task generation<br/>
-"main.py" file      : main algorithm for maml<br/>
-"options.py"        : hyperparamters control<br/>
-"pretrain.py"       : training single bert model<br/>
-"utils.py"          : util - no need to look at it<br/>
-"pretrained" folder : folder that contains pretrained model<br/>
+"models" folder     : BERT4REC models<br/> 
+"dataloader" file   : Data Preprocessing and Task Generation<br/>
+"main.py" file      : MAML with Task Adaptive Loss Implementation <br/>
+"options.py"        : Adjust Multiple Options(Hyperparmaters, Task Information, etc)<br/>
+"pretrain.py"       : Training Single BERT4REC Model<br/>
+"utils.py"          : util functions used for preprocessing<br/>
