@@ -8,6 +8,7 @@ import os
 import wget
 import zipfile
 from pathlib import Path
+# from options import args
 
 ROOT_FOLDER = "Data"
 
@@ -177,7 +178,7 @@ class DataLoader():
             smap : product ids
         '''
         umap = {u: i for i, u in enumerate(set(df['user_id']))}
-        smap = {s: i for i, s in enumerate(set(df['product_id']))}
+        smap = {s: (i+1) for i, s in enumerate(set(df['product_id']))}
         df['user_id'] = df['user_id'].map(umap)
         df['product_id'] = df['product_id'].map(smap)
         return df, umap, smap
@@ -255,27 +256,32 @@ class DataLoader():
             ratings : subsampled ratings
             normalized_num_samples: # samples / expected # samples
             target_idx : target product(rating) index
+
+        process:
+            cut sequences -> get query -> subsample support 
         '''
         ratings, product_ids = self.get_sliced_sequences(product_ids, ratings)
-        # number of subsamples (1+2+ ... + n-min_window+1 = (n-min_window+2)*(n-min_window+1)/2)
-        cur_num_samples = (len(ratings)-self.min_sub_window_size+2) * \
-            (len(ratings)-self.min_sub_window_size+1)//2
+        # number of support subsamples (1+2+ ... + (n-min_window) = (n-min_window+1)*(n-min_window)/2)
+        query_ratings = [0] * (self.max_sequence_length -
+                               len(ratings)) + ratings
+        query_product_ids = [0] * (self.max_sequence_length -
+                                   len(product_ids)) + product_ids
+        query_ratings = torch.FloatTensor(query_ratings).view(1, -1)
+        query_product_ids = torch.LongTensor(query_product_ids).view(1, -1)
+        cur_num_samples = (len(ratings)-self.min_sub_window_size+1) * \
+            (len(ratings)-self.min_sub_window_size)//2
         num_subsamples = cur_num_samples if cur_num_samples < self.num_samples else self.num_samples
         rand_idxs = np.random.choice(
             cur_num_samples, num_subsamples, replace=False)
-        ratings = torch.FloatTensor(self.subsample(ratings, rand_idxs))
-        product_ids = torch.LongTensor(self.subsample(product_ids, rand_idxs))
+        support_ratings = torch.FloatTensor(
+            self.subsample(ratings[:-1], rand_idxs))
+        support_product_ids = torch.LongTensor(
+            self.subsample(product_ids[:-1], rand_idxs))
         normalized_num_samples = num_subsamples/self.num_samples
 
-        # choose target indexes
-        num_query_set = self.num_query_set
-        if num_subsamples < self.num_query_set:
-            num_query_set = 1
-        target_idxs = np.random.choice(
-            num_subsamples, num_query_set, replace=False)
-        return ratings, product_ids, normalized_num_samples, target_idxs
+        return support_ratings, support_product_ids, query_ratings, query_product_ids, normalized_num_samples
 
-    def make_support_set(self, user_id, product_ids, ratings, target_idxs, normalized=False, use_label=True):
+    def make_support_set(self, user_id, product_ids, ratings,  normalized=False, use_label=True):
         '''
             function that makes support set
             choose all except target index element
@@ -283,13 +289,13 @@ class DataLoader():
             Args:
                 use_label : use label or not
         '''
-        support_idxs = np.setdiff1d(range(len(product_ids)), target_idxs)
-        support_product_history = product_ids[support_idxs, :-1]
-        support_target_product = product_ids[support_idxs, -1:]
-        support_rating_history = ratings[support_idxs, :-1]
-        support_target_rating = ratings[support_idxs, -1:]
+
+        support_product_history = product_ids[:, :-1]
+        support_target_product = product_ids[:, -1:]
+        support_rating_history = ratings[:, :-1]
+        support_target_rating = ratings[:, -1:]
         support_user_id = user_id.repeat(
-            len(support_idxs), 1)
+            len(ratings), 1)
 
         # make rating information based on supper ratings
         if use_label:
@@ -307,17 +313,18 @@ class DataLoader():
                         support_target_product, support_rating_history, support_target_rating)
         return support_data, rating_info
 
-    def make_query_set(self, user_id, product_ids, ratings, target_idxs):
+    def make_query_set(self, user_id, product_ids, ratings):
         '''
             function that makes query set
             choose target index element
         '''
-        query_product_history = product_ids[target_idxs, :-1]
-        query_target_product = product_ids[target_idxs, -1:]
-        query_rating_history = ratings[target_idxs, :-1]
-        query_target_rating = ratings[target_idxs, -1:]
+
+        query_product_history = product_ids[:, :-1]
+        query_target_product = product_ids[:, -1:]
+        query_rating_history = ratings[:, :-1]
+        query_target_rating = ratings[:, -1:]
         query_user_id = user_id.repeat(
-            len(target_idxs), 1)
+            len(product_ids), 1)
 
         # set default rating for padding
         query_rating_history = query_rating_history + \
@@ -409,15 +416,15 @@ class DataLoader():
             ratings = data.rating
 
             # subsamples
-            ratings, product_ids, normalized_num_samples, target_idxs = self.preprocess_wt_subsampling(
+            support_ratings, support_product_ids, query_ratings, query_product_ids, normalized_num_samples = self.preprocess_wt_subsampling(
                 product_ids, ratings)
 
             # make support set and query set
             support_data, rating_info = self.make_support_set(
-                user_id, product_ids, ratings, target_idxs, normalized, use_label)
+                user_id, support_product_ids, support_ratings, normalized, use_label)
 
             query_data = self.make_query_set(
-                user_id, product_ids, ratings, target_idxs)
+                user_id, query_product_ids, query_ratings)
 
             # make task information
             task_info = torch.Tensor(
@@ -527,9 +534,12 @@ class SequenceDataset(data.Dataset):
         return (user_id, product_history, target_product_id,  product_history_ratings), target_product_rating
 
 
-# dataloader = DataLoader('./Data/ml-1m/ratings.dat', max_sequence_length=30, min_sequence=5, min_sub_window_size=15,
-#                         samples_per_task=64, num_test_data=500,  mode="ml-1m", default_rating=1, pretraining=False, pretraining_batch_size=None)
+# dataloader = DataLoader(args, pretraining=False)
 # tasks = dataloader.generate_task(mode="train", batch_size=25, normalized=True)
 # support, query, task = tasks[0]
 # support_user_id, support_product_history, support_target_product, support_rating_history, support_target_rating = support
-# print(((support_product_history)==0).sum(axis=1))
+# query_user_id, query_product_history, query_target_product, query_rating_history, query_target_rating = query
+# print(support_rating_history.shape)
+# print(support_rating_history)
+# print(query_rating_history.shape)
+# print(query_rating_history)

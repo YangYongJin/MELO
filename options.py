@@ -50,7 +50,7 @@ parser.add_argument('--max_seq_len', type=int, default=30,
                     help='maximum sequence length')
 parser.add_argument('--bert_num_blocks', type=int, default=2,
                     help='number of bert blocks')
-parser.add_argument('--bert_num_heads', type=int, default=8,
+parser.add_argument('--bert_num_heads', type=int, default=4,
                     help='number of attention heads')
 parser.add_argument('--bert_hidden_units', type=int, default=128,
                     help='number of hidden units ')
@@ -66,9 +66,9 @@ parser.add_argument('--num_items', type=int, default=0,
                     help='number of items')
 parser.add_argument('--batch_size', type=int, default=32,
                     help='batch size')
-parser.add_argument('--num_samples', type=int, default=144,
+parser.add_argument('--num_samples', type=int, default=64,
                     help='number of subsamples')
-parser.add_argument('--num_query_set', type=int, default=16,
+parser.add_argument('--num_query_set', type=int, default=1,
                     help='number of query samples')
 parser.add_argument('--default_rating', type=int, default=1,
                     help='rating value for padding')
