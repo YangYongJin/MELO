@@ -90,6 +90,8 @@ parser.add_argument('--normalize_loss', type=boolean_string, default=True,
                     help='use normalized ratings')
 
 # task information manipulation
+parser.add_argument('--use_lstm', type=boolean_string, default=True,
+                    help='use lstm for task information')
 parser.add_argument('--task_info_loss', type=boolean_string, default=True,
                     help='use loss as task information')
 parser.add_argument('--task_info_rating_mean', type=boolean_string, default=True,
