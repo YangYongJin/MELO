@@ -116,10 +116,11 @@ class MAML:
                             500, 800, 950], gamma=0.7)
 
         if self.use_lstm:
+            self._lstm_lr = args.lstm_lr
             self.task_lstm_network = nn.LSTM(
                 batch_first=True, input_size=1, hidden_size=8, num_layers=2, dropout=0.3).to(self.device)
             self.task_lstm_optimizer = optim.Adam(
-                self.task_lstm_network.parameters(), lr=self._task_info_lr)
+                self.task_lstm_network.parameters(), lr=self._lstm_lr)
 
             # best results
         self.best_step = 0

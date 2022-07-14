@@ -34,11 +34,13 @@ parser.add_argument('--inner_lr', type=float, default=1e-3,
                     help='inner-loop learning rate initialization')
 parser.add_argument('--outer_lr', type=float, default=1e-4,
                     help='outer-loop bert learning rate')
-parser.add_argument('--fc_lr', type=float, default=1e-4,
+parser.add_argument('--fc_lr', type=float, default=1e-3,
                     help='outer-loop fc learning rate')
 parser.add_argument('--loss_lr', type=float, default=1e-3,
                     help='outer-loop learning rate')
 parser.add_argument('--task_info_lr', type=float, default=1e-3,
+                    help='outer-loop learning rate')
+parser.add_argument('--lstm_lr', type=float, default=1e-3,
                     help='outer-loop learning rate')
 parser.add_argument('--fc_weight_decay', type=float, default=0.1,
                     help='fc layer weight decay')
@@ -72,7 +74,7 @@ parser.add_argument('--num_query_set', type=int, default=1,
                     help='number of query samples')
 parser.add_argument('--default_rating', type=int, default=1,
                     help='rating value for padding')
-parser.add_argument('--min_sub_window_size', type=int, default=10,
+parser.add_argument('--min_sub_window_size', type=int, default=20,
                     help=('minimum sequence during subsampling'))
 parser.add_argument('--use_label', type=boolean_string, default=True,
                     help='use label as task information or input rating data as task information')
