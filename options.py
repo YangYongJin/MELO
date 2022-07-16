@@ -32,16 +32,16 @@ parser.add_argument('--num_inner_steps', type=int, default=5,
                     help='number of inner-loop updates')
 parser.add_argument('--inner_lr', type=float, default=1e-3,
                     help='inner-loop learning rate initialization')
-parser.add_argument('--outer_lr', type=float, default=1e-4,
+parser.add_argument('--outer_lr', type=float, default=1e-3,
                     help='outer-loop bert learning rate')
 parser.add_argument('--fc_lr', type=float, default=1e-3,
                     help='outer-loop fc learning rate')
-parser.add_argument('--loss_lr', type=float, default=1e-3,
+parser.add_argument('--loss_lr', type=float, default=1e-5,
                     help='outer-loop learning rate')
 parser.add_argument('--task_info_lr', type=float, default=1e-3,
                     help='outer-loop learning rate')
-parser.add_argument('--lstm_lr', type=float, default=1e-3,
-                    help='outer-loop learning rate')
+parser.add_argument('--lstm_lr', type=float, default=1e-1,
+                    help='lstm learning rate')
 parser.add_argument('--fc_weight_decay', type=float, default=0.1,
                     help='fc layer weight decay')
 parser.add_argument('--num_train_iterations', type=int, default=1000,
@@ -74,7 +74,7 @@ parser.add_argument('--num_query_set', type=int, default=1,
                     help='number of query samples')
 parser.add_argument('--default_rating', type=int, default=1,
                     help='rating value for padding')
-parser.add_argument('--min_sub_window_size', type=int, default=20,
+parser.add_argument('--min_sub_window_size', type=int, default=15,
                     help=('minimum sequence during subsampling'))
 parser.add_argument('--use_label', type=boolean_string, default=True,
                     help='use label as task information or input rating data as task information')
@@ -86,7 +86,7 @@ parser.add_argument('--use_multi_step', type=boolean_string, default=True,
                     help='use multi step loss or not')
 parser.add_argument('--use_adaptive_loss', type=boolean_string, default=True,
                     help='use adaptive loss or pure maml')
-parser.add_argument('--use_adaptive_loss_weight', type=boolean_string, default=True,
+parser.add_argument('--use_adaptive_loss_weight', type=boolean_string, default=False,
                     help='use adaptive loss with weight')
 parser.add_argument('--normalize_loss', type=boolean_string, default=True,
                     help='use normalized ratings')

@@ -22,6 +22,8 @@ class MAML:
 
         self.args = args
         self.batch_size = args.batch_size  # task batch size
+
+        # load dataloader
         self.dataloader = DataLoader(args, pretraining=False)
 
         # set # of users and # of items
@@ -33,7 +35,7 @@ class MAML:
         if torch.cuda.is_available():
             self.device = torch.cuda.current_device()
 
-        # define bert4rec model (theta)
+        # define model (theta)
         self.model = BERTModel(self.args).to(self.device)
 
         # set log and save directories
@@ -115,10 +117,11 @@ class MAML:
                 MultiStepLR(self.task_info_optimizer, milestones=[
                             500, 800, 950], gamma=0.7)
 
+        # use lstm as task information
         if self.use_lstm:
             self._lstm_lr = args.lstm_lr
             self.task_lstm_network = nn.LSTM(
-                batch_first=True, input_size=1, hidden_size=8, num_layers=2, dropout=0.3).to(self.device)
+                batch_first=True, input_size=1, hidden_size=8, num_layers=1, dropout=0.3).to(self.device)
             self.task_lstm_optimizer = optim.Adam(
                 self.task_lstm_network.parameters(), lr=self._lstm_lr)
 
@@ -186,6 +189,7 @@ class MAML:
             mae_loss = mae_loss_fn(
                 outputs.clone().detach(), query_target_rating)
             query_output_loss = query_loss.clone().detach()
+
         query_loss.backward()
 
         # update gradients of meta paramters
@@ -260,11 +264,18 @@ class MAML:
                 if self.use_lstm:
                     task_input = torch.cat(
                         (inputs[3], target_rating), dim=1).reshape(-1, self.args.max_seq_len, 1)/5.0
+                    b, t, _ = task_input.shape
+                    h0 = torch.randn(1, b, 8).to(self.device)
+                    c0 = torch.randn(1, b, 8).to(self.device)
                     task_info, (h_out, c_out) = self.task_lstm_network(
-                        task_input)
+                        task_input, (h0, c0))
                     task_info = task_info[:, -1, :]
                     task_info = torch.cat((loss, task_info), dim=1)
-                    loss = torch.mean(self.loss_network(task_info))
+                    # task_info_adapt = (task_info-task_info.mean(dim=1, keepdim=True)) / \
+                    #     (task_info.std(dim=1, keepdim=True) + 1e-5)
+                    loss = self.loss_network(task_info)
+                    loss = torch.mean(loss)
+
                 else:
                     loss = torch.mean(loss)
                     task_info_step = torch.cat(
@@ -349,12 +360,36 @@ class MAML:
 
         # Update meta parameters
         if train:
+            total_norm = 0.0
+            for p in self.model.parameters():
+                param_norm = p.grad.detach().data.norm(2)
+                total_norm += param_norm.item() ** 2
+            total_norm = total_norm ** 0.5
+            print(total_norm)
+            torch.nn.utils.clip_grad_norm_(
+                self.model.parameters(), max_norm=100)
             self.meta_optimizer.step()
             # self.meta_lr_scheduler.step()
             if self.use_adaptive_loss:
+                total_norm = 0.0
+                for p in self.loss_network.parameters():
+                    param_norm = p.grad.detach().data.norm(2)
+                    total_norm += param_norm.item() ** 2
+                total_norm = total_norm ** 0.5
+                print(total_norm)
+                torch.nn.utils.clip_grad_norm_(
+                    self.loss_network.parameters(), max_norm=100)
                 self.loss_optimizer.step()
                 # self.loss_lr_scheduler.step()
             if self.use_lstm:
+                total_norm = 0.0
+                for p in self.task_lstm_network.parameters():
+                    param_norm = p.grad.detach().data.norm(2)
+                    total_norm += param_norm.item() ** 2
+                total_norm = total_norm ** 0.5
+                print(total_norm)
+                torch.nn.utils.clip_grad_norm_(
+                    self.task_lstm_network.parameters(), max_norm=100)
                 self.task_lstm_optimizer.step()
             if self.use_adaptive_loss_weight:
                 self.task_info_optimizer.step()
