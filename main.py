@@ -51,25 +51,19 @@ class MAML:
         # meta hyperparameters
         self._num_inner_steps = args.num_inner_steps
         self._inner_lr = args.inner_lr
-        # for bert
+        # for meta model
         self._outer_lr = args.outer_lr
-        # for last fc layers
-        self._fc_lr = args.fc_lr
 
         # user normalized ratings (0, 1)
         self.normalize_loss = self.args.normalize_loss
 
+        # inner loop optimizer
         self.inner_loop_optimizer = GradientDescentLearningRule(
             self.device, learning_rate=self._inner_lr)
 
-        # freeze bert model and only update last layers
-        if args.freeze_bert:
-            self.meta_optimizer = optim.Adam(
-                self.model.parameters(), lr=self._fc_lr, weight_decay=args.fc_weight_decay)
-        else:
-            # apply different learning rate for bert and fc
-            self.meta_optimizer = optim.Adam(
-                self.model.parameters(), lr=self._outer_lr)
+        # meta optimizer
+        self.meta_optimizer = optim.Adam(
+            self.model.parameters(), lr=self._outer_lr)
 
         # meta learning rate scheduler
         self.meta_lr_scheduler = optim.lr_scheduler.CosineAnnealingLR(
@@ -196,8 +190,7 @@ class MAML:
 
         return names_weights_copy
 
-    # update meta paramters
-
+    # forward on query data
     def query_forward(self, query_inputs, query_target_rating, names_weights_copy, mae_loss_fn, imp_weight=1):
         '''
         Update gradient values of meta learning parameters
@@ -315,6 +308,9 @@ class MAML:
                     else:
                         loss += self.loss_network(task_info_adapt)[0]
 
+            else:
+                loss = torch.mean(loss)
+
             # update inner loop paramters phi
             names_weights_copy = self.apply_inner_loop_update(loss=loss, names_weights_copy=names_weights_copy,
                                                               use_second_order=True)
@@ -340,7 +336,7 @@ class MAML:
                     task_mae_losses.append(mae_loss)
 
         query_loss = torch.sum(torch.stack(task_mse_losses))
-        query_out_loss = torch.sum(torch.stack(task_mse_out_losses))
+        query_out_loss = torch.mean(torch.stack(task_mse_out_losses))
         mae_loss = torch.mean(torch.stack(task_mae_losses))
         return query_loss, query_out_loss, mae_loss
 
@@ -364,6 +360,7 @@ class MAML:
         mse_loss_out_batch = []
         mae_loss_batch = []
 
+        # initialize meta parameters
         self.meta_optimizer.zero_grad()
         if self.use_adaptive_loss:
             self.loss_optimizer.zero_grad()
@@ -485,8 +482,17 @@ class MAML:
 
             # evaluate validation set
             if i % VAL_INTERVAL == 0:
-                mse_loss, rmse_loss, mae_loss = self._outer_loop(
-                    val_batches, train=False)
+                val_mse_losses = []
+                val_mae_losses = []
+                for i in range(len(val_batches)//self.batch_size + 1):
+                    mse_loss, _, mae_loss = self._outer_loop(
+                        val_batches[i*self.batch_size: (i+1)*self.batch_size], train=False)
+                    val_mse_losses.append(mse_loss)
+                    val_mae_losses.append(mae_loss)
+
+                mse_loss = np.mean(val_mse_losses)
+                rmse_loss = np.sqrt(mse_loss)
+                mae_loss = np.mean(val_mae_losses)
 
                 print(
                     f'\tValidation: '
@@ -521,8 +527,18 @@ class MAML:
         '''
         test_batches = self.dataloader.generate_task(
             mode="test", batch_size=self.args.num_test_data, normalized=self.normalize_loss, use_label=self.args.use_label)
-        mse_loss, rmse_loss, mae_loss = self._outer_loop(
-            test_batches, train=False)
+        test_mse_losses = []
+        test_mae_losses = []
+        for i in range(len(test_batches)//self.batch_size + 1):
+            mse_loss, _, mae_loss = self._outer_loop(
+                test_batches[i*self.batch_size: (i+1)*self.batch_size], train=False)
+            test_mse_losses.append(mse_loss)
+            test_mae_losses.append(mae_loss)
+
+        mse_loss = np.mean(test_mse_losses)
+        rmse_loss = np.sqrt(mse_loss)
+        mae_loss = np.mean(test_mae_losses)
+
         print(
             f'\tTest: '
             f'Test MSE loss: {mse_loss:.4f} | '
@@ -583,6 +599,9 @@ class MAML:
             if self.use_adaptive_loss_weight:
                 self.task_info_network.load_state_dict(
                     checkpoint['loss_weight_model'])
+            if self.use_lstm:
+                self.task_lstm_network.load_state_dict(
+                    checkpoint['lstm_model'])
 
         except:
             raise ValueError(
@@ -600,6 +619,8 @@ class MAML:
             model_dict['loss_model'] = self.loss_network.state_dict()
         if self.use_adaptive_loss_weight:
             model_dict['loss_weight_model'] = self.task_info_network.state_dict()
+        if self.use_lstm:
+            model_dict['lstm_model'] = self.task_lstm_network.state_dict()
         torch.save(model_dict, save_path)
 
     def load_pretrained_bert(self, filename):
@@ -625,13 +646,6 @@ class MAML:
             raise ValueError(
                 f'No Pretrained Model or something goes wrong.')
 
-    def freeze_bert(self):
-        '''
-            freeze bert
-        '''
-        for param in self.model.bert.parameters():
-            param.requires_grad = False
-
 
 def main(args):
     if args.log_dir is None:
@@ -650,8 +664,6 @@ def main(args):
                 if 'best' in filename:
                     maml.load_pretrained_bert(filename)
                     break
-            if args.freeze_bert:
-                maml.freeze_bert()
         else:
             print("No pretrained model - skip loading")
 

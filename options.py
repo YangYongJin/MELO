@@ -34,13 +34,11 @@ parser.add_argument('--inner_lr', type=float, default=1e-3,
                     help='inner-loop learning rate initialization')
 parser.add_argument('--outer_lr', type=float, default=1e-3,
                     help='outer-loop bert learning rate')
-parser.add_argument('--fc_lr', type=float, default=1e-3,
-                    help='outer-loop fc learning rate')
-parser.add_argument('--loss_lr', type=float, default=1e-5,
+parser.add_argument('--loss_lr', type=float, default=1e-3,
                     help='outer-loop learning rate')
 parser.add_argument('--task_info_lr', type=float, default=1e-3,
                     help='outer-loop learning rate')
-parser.add_argument('--lstm_lr', type=float, default=1e-1,
+parser.add_argument('--lstm_lr', type=float, default=1e-3,
                     help='lstm learning rate')
 parser.add_argument('--fc_weight_decay', type=float, default=0.1,
                     help='fc layer weight decay')
@@ -61,12 +59,12 @@ parser.add_argument('--bert_dropout', type=float, default=0.1,
 parser.add_argument('--model_init_seed', type=int, default=5,
                     help='init seed')
 
-# task generator parameters
+# dataloader parameters
 parser.add_argument('--num_users', type=int, default=0,
                     help='# of users')
 parser.add_argument('--num_items', type=int, default=0,
                     help='number of items')
-parser.add_argument('--batch_size', type=int, default=32,
+parser.add_argument('--batch_size', type=int, default=16,
                     help='batch size')
 parser.add_argument('--num_samples', type=int, default=64,
                     help='number of subsamples')
@@ -88,12 +86,12 @@ parser.add_argument('--use_adaptive_loss', type=boolean_string, default=True,
                     help='use adaptive loss or pure maml')
 parser.add_argument('--use_adaptive_loss_weight', type=boolean_string, default=False,
                     help='use adaptive loss with weight')
+parser.add_argument('--use_lstm', type=boolean_string, default=True,
+                    help='use lstm for task information')
 parser.add_argument('--normalize_loss', type=boolean_string, default=True,
                     help='use normalized ratings')
 
 # task information manipulation
-parser.add_argument('--use_lstm', type=boolean_string, default=True,
-                    help='use lstm for task information')
 parser.add_argument('--task_info_loss', type=boolean_string, default=True,
                     help='use loss as task information')
 parser.add_argument('--task_info_rating_mean', type=boolean_string, default=True,
@@ -115,8 +113,6 @@ parser.add_argument('--pretraining_lr', type=float, default=1e-3,
                     help='learning rate during pretraining')
 parser.add_argument('--load_pretrained', type=boolean_string, default=False,
                     help='load pretrained model or not')
-parser.add_argument('--freeze_bert', type=boolean_string, default=False,
-                    help='freeze bert model or not')
 parser.add_argument('--load_save_bert', type=boolean_string, default=False,
                     help='load and save bert or whole model at pretrain.py')
 parser.add_argument('--pretrain_log_dir', type=str, default='./log_pretrained',

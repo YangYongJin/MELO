@@ -33,8 +33,8 @@ class GradientDescentLearningRule(nn.Module):
         """
         super(GradientDescentLearningRule, self).__init__()
         assert learning_rate > 0., 'learning_rate should be positive.'
-        self.learning_rate = torch.ones(1) * learning_rate
-        self.learning_rate.to(device)
+        self.learning_rate = learning_rate
+        self.device = device
 
     def update_params(self, names_weights_dict, names_grads_wrt_params_dict):
         """Applies a single gradient descent update to all parameters.
