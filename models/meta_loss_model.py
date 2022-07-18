@@ -1,10 +1,14 @@
 import torch
 import torch.nn as nn
+import math
+import torch.nn.functional as F
 
 
 class MetaLossNetwork(nn.Module):
     def __init__(self, num_loss_hidden, num_loss_layers):
         super().__init__()
+        self.in_linear = nn.Linear(num_loss_hidden, num_loss_hidden, bias=True)
+        self.attention = nn.MultiheadAttention(1, 1, batch_first=True)
         self.layers = nn.ModuleList()
         for _ in range(num_loss_layers-1):
             self.layers.append(nn.Sequential(
@@ -14,6 +18,11 @@ class MetaLossNetwork(nn.Module):
         self.layers.append(nn.Linear(num_loss_hidden, 1, bias=False))
 
     def forward(self, x):
+        x = self.in_linear(x)
+        b, c = x.shape
+        x = x.reshape(b, c, 1)
+        x, _ = self.attention(x, x, x)
+        x = x.reshape(b, c)
         for layer in self.layers:
             x = layer(x)
         return x
@@ -22,8 +31,8 @@ class MetaLossNetwork(nn.Module):
 class MetaTaskLstmNetwork(nn.Module):
     def __init__(self, input_size, lstm_hidden, num_lstm_layers):
         super().__init__()
-        self.h0 = nn.Parameter(torch.randn(1,  9))
-        self.c0 = nn.Parameter(torch.randn(1,  9))
+        self.h0 = nn.Parameter(torch.randn(1,  lstm_hidden))
+        self.c0 = nn.Parameter(torch.randn(1,  lstm_hidden))
         self.lstm = nn.LSTM(
             batch_first=True, input_size=input_size, hidden_size=lstm_hidden, num_layers=num_lstm_layers)
 

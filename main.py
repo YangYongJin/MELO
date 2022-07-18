@@ -80,7 +80,8 @@ class MAML:
         self.use_adaptive_loss = args.use_adaptive_loss
         self.use_adaptive_loss_weight = (
             args.use_adaptive_loss_weight and self.use_adaptive_loss)
-        self.use_lstm = args.use_lstm
+        self.use_lstm = (
+            args.use_lstm and self.use_adaptive_loss)
         num_loss_dims = None
         # settings for adaptive loss
         if self.use_adaptive_loss:
