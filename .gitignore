@@ -8,6 +8,8 @@ Data/
 log/
 log_pretrained/
 
+test.py
+
 
 # Created by .ignore support plugin (hsz.mobi)
 ### JetBrains template
@@ -94,7 +96,7 @@ celerybeat-schedule
 
 # SageMath parsed files
 *.sage.py
-test.py
+
 
 # Environments
 .env

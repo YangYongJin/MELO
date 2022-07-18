@@ -1,5 +1,6 @@
 from models.meta_bert_model import MetaBERT4Rec
 from models.meta_loss_model import MetaLossNetwork, MetaTaskLstmNetwork
+from models.meta_sasrec_model import MetaSAS4Rec
 from inner_loop_optimizers import GradientDescentLearningRule
 from dataloader import DataLoader
 from options import args
@@ -38,7 +39,10 @@ class MAML:
             self.device = torch.cuda.current_device()
 
         # define model (theta)
-        self.model = MetaBERT4Rec(self.args).to(self.device)
+        if args.model == 'bert4rec':
+            self.model = MetaBERT4Rec(self.args).to(self.device)
+        elif args.model == 'sas4rec':
+            self.model = MetaSAS4Rec(self.args).to(self.device)
 
         # set log and save directories
         self._log_dir = args.log_dir
@@ -289,7 +293,8 @@ class MAML:
                     task_info, (h_out, c_out) = self.task_lstm_network(
                         task_input)
                     task_info = task_info[:, -1, :]
-                    task_info = loss * task_info
+                    # task_info = loss * task_info
+                    task_info = torch.cat((loss, task_info), dim=1)
                     # task_info_adapt = (task_info-task_info.mean(dim=1, keepdim=True)) / \
                     #     (task_info.std(dim=1, keepdim=True) + 1e-5)
                     loss = self.loss_network(task_info)
@@ -404,6 +409,8 @@ class MAML:
                 param_norm = p.grad.detach().data.norm(2)
                 total_norm += param_norm.item() ** 2
             total_norm = total_norm ** 0.5
+            torch.nn.utils.clip_grad_norm_(
+                self.model.parameters(), max_norm=5.0)
             print(total_norm)
 
             self.meta_optimizer.step()
