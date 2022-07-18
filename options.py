@@ -85,6 +85,14 @@ parser.add_argument('--narm_n_layers', type=int, default=2,
 parser.add_argument('--narm_embedding_dim', type=int, default=128,
                     help='narm embedding dimension')
 
+# narm model
+parser.add_argument('--gru4rec_hidden_size', type=int, default=32,
+                    help='gru4rec gru hidden size')
+parser.add_argument('--gru4rec_n_layers', type=int, default=4,
+                    help='gru4rec gru num layers')
+parser.add_argument('--gru4rec_embedding_dim', type=int, default=128,
+                    help='gru4rec embedding dimension')
+
 # dataloader parameters
 parser.add_argument('--num_users', type=int, default=0,
                     help='# of users')
