@@ -40,7 +40,7 @@ class MAML:
         self.args.device = self.device
 
         # define model (theta)
-        self.model = model_factory(args)
+        self.model = model_factory(args).to(self.device)
 
         # set log and save directories
         self._log_dir = args.log_dir

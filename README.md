@@ -1,12 +1,27 @@
 # MELO - MEta-learning-based Sequential Recommendation Framework with Learned LOss Network for Imbalanced Cold-Start Recommendation 
 
-BERT4REC_MAML is implementation of MAML with task adaptive loss using BERT4REC model
+Melo solves user cold start problem of sequential recommendation using meta learning with adaptive loss
+
+# References (Codes and Papers)
 
 > **BERT4REC model reference code: https://github.com/jaywonchung/BERT4Rec-VAE-Pytorch**
 
+> **NARM model reference code: https://github.com/Wang-Shuo/Neural-Attentive-Session-Based-Recommendation-PyTorch**
+
+> **Maml++ reference code: https://github.com/AntreasAntoniou/HowToTrainYourMAMLPytorch**
+
+
 > **BERT4Rec: Sequential Recommendation with BERT (Sun et al.)**
 
+> **SAS4Rec: Self-Attentive Sequential Recommendation (Kang et al.)**
+
+> **NARM: Neural Attentive Session-based Recommendation (Li et al.)**
+
+> **GRU4Rec: SESSION-BASED RECOMMENDATIONS WITH RECURRENT NEURAL NETWORKS (Hidasi et al.)**
+
 > **METAL: Meta-Learning with Task-Adaptive Loss Function for Few-Shot Learning (Baik et al.)** 
+
+
 
 
 
@@ -14,7 +29,11 @@ BERT4REC_MAML is implementation of MAML with task adaptive loss using BERT4REC m
 * pytorch 
 * tqdm 
 * tensorboard
-* wget  
+* wget
+* shutil
+* zipfile
+* tempfile
+  
 <br/>
 
 # Usage
