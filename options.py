@@ -77,6 +77,14 @@ parser.add_argument('--bert_dropout', type=float, default=0.1,
 parser.add_argument('--model_init_seed', type=int, default=5,
                     help='init seed')
 
+# narm model
+parser.add_argument('--narm_hidden_size', type=int, default=32,
+                    help='narm gru hidden size')
+parser.add_argument('--narm_n_layers', type=int, default=2,
+                    help='narm gru num layers')
+parser.add_argument('--narm_embedding_dim', type=int, default=128,
+                    help='narm embedding dimension')
+
 # dataloader parameters
 parser.add_argument('--num_users', type=int, default=0,
                     help='# of users')

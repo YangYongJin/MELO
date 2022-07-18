@@ -1,6 +1,5 @@
-from models.meta_bert_model import MetaBERT4Rec
+from models import model_factory
 from models.meta_loss_model import MetaLossNetwork, MetaTaskLstmNetwork
-from models.meta_sasrec_model import MetaSAS4Rec
 from inner_loop_optimizers import GradientDescentLearningRule
 from dataloader import DataLoader
 from options import args
@@ -17,7 +16,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 # SAVE_INTERVAL = 50
 LOG_INTERVAL = 1
-VAL_INTERVAL = 25
+VAL_INTERVAL = 50
 
 
 class MAML:
@@ -38,11 +37,10 @@ class MAML:
         if torch.cuda.is_available():
             self.device = torch.cuda.current_device()
 
+        self.args.device = self.device
+
         # define model (theta)
-        if args.model == 'bert4rec':
-            self.model = MetaBERT4Rec(self.args).to(self.device)
-        elif args.model == 'sas4rec':
-            self.model = MetaSAS4Rec(self.args).to(self.device)
+        self.model = model_factory(args)
 
         # set log and save directories
         self._log_dir = args.log_dir
@@ -458,7 +456,7 @@ class MAML:
 
         # set validation tasks
         val_batches = self.dataloader.generate_task(
-            mode="valid", batch_size=300, normalized=self.normalize_loss, use_label=self.args.use_label)
+            mode="valid", batch_size=600, normalized=self.normalize_loss, use_label=self.args.use_label)
 
         # iteration
         for i in range(1, train_steps+1):

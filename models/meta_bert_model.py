@@ -499,36 +499,36 @@ class MetaBERT4Rec(nn.Module):
                     params[name].grad = None
 
 
-class MetaLossNetwork(nn.Module):
-    """
-    Bidirectional Encoder = Transformer (self-attention)
-    Transformer = MultiHead_Attention + Feed_Forward with sublayer connection
-    """
+# class MetaLossNetwork(nn.Module):
+#     """
+#     Bidirectional Encoder = Transformer (self-attention)
+#     Transformer = MultiHead_Attention + Feed_Forward with sublayer connection
+#     """
 
-    def __init__(self):
-        """
-        :param hidden: hidden size of transformer
-        :param attn_heads: head sizes of multi-head attention
-        :param feed_forward_hidden: feed_forward_hidden, usually 4*hidden_size
-        :param dropout: dropout rate
-        """
+#     def __init__(self):
+#         """
+#         :param hidden: hidden size of transformer
+#         :param attn_heads: head sizes of multi-head attention
+#         :param feed_forward_hidden: feed_forward_hidden, usually 4*hidden_size
+#         :param dropout: dropout rate
+#         """
 
-        super().__init__()
-        self.linear1 = MetaLinearLayer(
-            1, 3, use_bias=False)
-        self.linear2 = MetaLinearLayer(
-            3, 1, use_bias=False)
+#         super().__init__()
+#         self.linear1 = MetaLinearLayer(
+#             1, 3, use_bias=False)
+#         self.linear2 = MetaLinearLayer(
+#             3, 1, use_bias=False)
 
-    def forward(self, x, params=None):
-        if params is not None:
-            params = extract_top_level_dict(current_dict=params)
+#     def forward(self, x, params=None):
+#         if params is not None:
+#             params = extract_top_level_dict(current_dict=params)
 
-            linear1_params = params['linear1']
-            linear2_params = params['linear2']
+#             linear1_params = params['linear1']
+#             linear2_params = params['linear2']
 
-        else:
-            linear1_params = None
-            linear2_params = None
-        x = self.linear1(x, params=linear1_params)
-        x = self.linear2(x, params=linear2_params)
-        return x
+#         else:
+#             linear1_params = None
+#             linear2_params = None
+#         x = self.linear1(x, params=linear1_params)
+#         x = self.linear2(x, params=linear2_params)
+#         return x

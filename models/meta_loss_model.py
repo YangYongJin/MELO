@@ -31,13 +31,13 @@ class MetaLossNetwork(nn.Module):
 class MetaTaskLstmNetwork(nn.Module):
     def __init__(self, input_size, lstm_hidden, num_lstm_layers):
         super().__init__()
-        self.h0 = nn.Parameter(torch.randn(1,  lstm_hidden))
-        self.c0 = nn.Parameter(torch.randn(1,  lstm_hidden))
+        self.h0 = nn.Parameter(torch.randn(num_lstm_layers,  lstm_hidden))
+        self.c0 = nn.Parameter(torch.randn(num_lstm_layers,  lstm_hidden))
         self.lstm = nn.LSTM(
             batch_first=True, input_size=input_size, hidden_size=lstm_hidden, num_layers=num_lstm_layers)
 
     def forward(self, x):
         b, t, _ = x.shape
-        h0 = self.h0.repeat(1, b, 1)
-        c0 = self.c0.repeat(1, b, 1)
+        h0 = self.h0.repeat(b, 1, 1).permute(1, 0, 2)
+        c0 = self.c0.repeat(b, 1, 1).permute(1, 0, 2)
         return self.lstm(x, (h0, c0))
