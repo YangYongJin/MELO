@@ -3,8 +3,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
-from models.meta_model import MetaBERT4Rec
-from models.meta_model import MetaLossNetwork
+from models.meta_bert_model import MetaBERT4Rec
+from models.meta_bert_model import MetaLossNetwork
 from options import args
 import numpy as np
 
@@ -71,19 +71,19 @@ a.requires_grad = True
 b = torch.tensor(4.2)
 b.requires_grad = True
 
-loss_net = nn.Linear(1, 1, bias=False)
+# loss_net = nn.Linear(1, 1, bias=False)
 loss_net.zero_grad()
 
-for _ in range(5):
+for _ in range(1):
     # names_weights_copy.zero_grad()
     loss = loss_fn(model(inputs, params=names_weights_copy), output)
     support_task_state = []
     support_task_state.append(loss)
-    # for v in names_weights_copy.values():
-    #     support_task_state.append(v.mean())
+    for v in names_weights_copy.values():
+        support_task_state.append(v.mean())
     support_task_state = torch.stack(support_task_state)
     loss2 = torch.mean(
-        loss_net(torch.mean(support_task_state).reshape(1, 1)))
+        loss_net(torch.mean(support_task_state).reshape(1, 1), params=loss_weights_copy))
     # loss2 = torch.mean(support_task_state)*a
 
     grads = torch.autograd.grad(
@@ -95,7 +95,7 @@ for _ in range(5):
 print(a.grad)
 loss = loss_fn(model(inputs, params=names_weights_copy), output)
 loss.backward()
-# print(a.grad)
+print(a.grad)
 
 # total_norm = 0.0
 # for p in model.parameters():

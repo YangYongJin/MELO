@@ -515,9 +515,9 @@ class MetaLossNetwork(nn.Module):
 
         super().__init__()
         self.linear1 = MetaLinearLayer(
-            2, 3)
+            1, 3, use_bias=False)
         self.linear2 = MetaLinearLayer(
-            3, 1)
+            3, 1, use_bias=False)
 
     def forward(self, x, params=None):
         if params is not None:

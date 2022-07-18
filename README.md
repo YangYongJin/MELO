@@ -1,4 +1,4 @@
-# Introduction
+# MELO - MEta-learning-based Sequential Recommendation Framework with Learned LOss Network for Imbalanced Cold-Start Recommendation 
 
 BERT4REC_MAML is implementation of MAML with task adaptive loss using BERT4REC model
 

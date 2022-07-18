@@ -32,7 +32,7 @@ parser.add_argument('--num_inner_steps', type=int, default=5,
                     help='number of inner-loop updates')
 parser.add_argument('--inner_lr', type=float, default=1e-3,
                     help='inner-loop learning rate initialization')
-parser.add_argument('--outer_lr', type=float, default=1e-3,
+parser.add_argument('--outer_lr', type=float, default=1e-4,
                     help='outer-loop bert learning rate')
 parser.add_argument('--loss_lr', type=float, default=1e-3,
                     help='outer-loop learning rate')
@@ -42,8 +42,21 @@ parser.add_argument('--lstm_lr', type=float, default=1e-3,
                     help='lstm learning rate')
 parser.add_argument('--fc_weight_decay', type=float, default=0.1,
                     help='fc layer weight decay')
-parser.add_argument('--num_train_iterations', type=int, default=1000,
+parser.add_argument('--num_train_iterations', type=int, default=2000,
                     help='number of outer-loop updates to train for')
+
+
+# lstm model
+parser.add_argument('--lstm_hidden', type=int, default=9,
+                    help='the number of lstm hidden state dimension')
+parser.add_argument('--lstm_num_layers', type=int, default=1,
+                    help='the number of lstm layers')
+parser.add_argument('--lstm_input_size', type=int, default=1,
+                    help='input dimension of lstm')
+
+# adaptive loss network
+parser.add_argument('--loss_num_layers', type=int, default=2,
+                    help='the number of adaptive loss layers')
 
 # about bert model
 parser.add_argument('--max_seq_len', type=int, default=30,

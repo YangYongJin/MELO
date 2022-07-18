@@ -1,4 +1,5 @@
-from models.meta_model import MetaBERT4Rec
+from models.meta_bert_model import MetaBERT4Rec
+from models.meta_loss_model import MetaLossNetwork, MetaTaskLstmNetwork
 from inner_loop_optimizers import GradientDescentLearningRule
 from dataloader import DataLoader
 from options import args
@@ -76,19 +77,16 @@ class MAML:
         self.use_adaptive_loss_weight = (
             args.use_adaptive_loss_weight and self.use_adaptive_loss)
         self.use_lstm = args.use_lstm
-        num_loss_layers = None
+        num_loss_dims = None
         # settings for adaptive loss
         if self.use_adaptive_loss:
             self._loss_lr = args.loss_lr
             self.task_info_loss = args.task_info_loss
-            num_loss_layers = self.task_info_loss * 1 + 1*args.task_info_rating_mean + 1 * \
+            num_loss_dims = self.task_info_loss * 1 + 1*args.task_info_rating_mean + 1 * \
                 args.task_info_rating_std + 1*args.task_info_num_samples + \
                 5*args.task_info_rating_distribution
-            self.loss_network = nn.Sequential(
-                nn.Linear(num_loss_layers, num_loss_layers, bias=False),
-                nn.ReLU(),
-                nn.Linear(num_loss_layers, 1, bias=False),
-            ).to(self.device)
+            self.loss_network = MetaLossNetwork(
+                num_loss_dims, args.loss_num_layers).to(self.device)
             self.loss_optimizer = optim.Adam(
                 self.loss_network.parameters(), lr=self._loss_lr)
             self.loss_lr_scheduler = optim.lr_scheduler.\
@@ -97,13 +95,13 @@ class MAML:
 
          # settings for adaptive loss weight
         if self.use_adaptive_loss_weight:
-            num_loss_weight_layers = num_loss_layers - self.task_info_loss * 1
+            num_loss_weight_dims = num_loss_dims - self.task_info_loss * 1
             self._task_info_lr = args.task_info_lr
             self.task_info_network = nn.Sequential(
-                nn.Linear(num_loss_weight_layers,
-                          num_loss_weight_layers, bias=False),
+                nn.Linear(num_loss_weight_dims,
+                          num_loss_weight_dims, bias=False),
                 nn.ReLU(),
-                nn.Linear(num_loss_weight_layers, 1, bias=False),
+                nn.Linear(num_loss_weight_dims, 1, bias=False),
             ).to(self.device)
             self.task_info_optimizer = optim.Adam(
                 self.task_info_network.parameters(), lr=self._task_info_lr)
@@ -114,8 +112,8 @@ class MAML:
         # use lstm as task information
         if self.use_lstm:
             self._lstm_lr = args.lstm_lr
-            self.task_lstm_network = nn.LSTM(
-                batch_first=True, input_size=1, hidden_size=9, num_layers=1, dropout=0.3).to(self.device)
+            self.task_lstm_network = MetaTaskLstmNetwork(
+                input_size=args.lstm_input_size, lstm_hidden=args.lstm_hidden, num_lstm_layers=args.lstm_num_layers).to(self.device)
             self.task_lstm_optimizer = optim.Adam(
                 self.task_lstm_network.parameters(), lr=self._lstm_lr)
 
@@ -227,7 +225,7 @@ class MAML:
         return query_loss, query_out_loss, mae_loss
 
     # inner loop optimization
-    def _inner_loop(self, support_data, task_info, query_inputs, query_target_rating, imp_vecs, train):
+    def _inner_loop(self, support_data, task_info, query_inputs, query_target_rating, train):
         """Computes the adapted network parameters via the MAML inner loop.
 
         Args:
@@ -254,6 +252,8 @@ class MAML:
         # inner loop parameters phi
         names_weights_copy = self.get_inner_loop_parameter_dict(
             self.model.named_parameters())
+        # get importance weight
+        imp_vecs = self.get_per_step_loss_importance_vector()
 
         # GPU enabling
         user_id, product_history, target_product_id,  product_history_ratings, target_rating = support_data
@@ -285,10 +285,9 @@ class MAML:
                     task_input = torch.cat(
                         (inputs[3], target_rating), dim=1).reshape(-1, self.args.max_seq_len, 1)/5.0
                     b, t, _ = task_input.shape
-                    h0 = torch.randn(1, b, 9).to(self.device)
-                    c0 = torch.randn(1, b, 9).to(self.device)
+
                     task_info, (h_out, c_out) = self.task_lstm_network(
-                        task_input, (h0, c0))
+                        task_input)
                     task_info = task_info[:, -1, :]
                     task_info = loss * task_info
                     # task_info_adapt = (task_info-task_info.mean(dim=1, keepdim=True)) / \
@@ -353,8 +352,6 @@ class MAML:
             rmse_loss: mean query RMSE loss over the batch
             mae_loss: mean query MAE loss over the batch
         """
-        # get importance weight
-        imp_vecs = self.get_per_step_loss_importance_vector()
 
         mse_loss_batch = []
         mse_loss_out_batch = []
@@ -387,7 +384,7 @@ class MAML:
 
             # inner loop operation
             query_loss, query_out_loss, mae_loss = self._inner_loop(
-                support, task_info, query_inputs, query_target_rating, imp_vecs, train)  # do inner loop
+                support, task_info, query_inputs, query_target_rating, train)  # do inner loop
 
             # collect loss data
             mse_loss_batch.append(query_loss)
@@ -484,9 +481,9 @@ class MAML:
             if i % VAL_INTERVAL == 0:
                 val_mse_losses = []
                 val_mae_losses = []
-                for i in range(len(val_batches)//self.batch_size + 1):
+                for j in range(len(val_batches)//self.batch_size + 1):
                     mse_loss, _, mae_loss = self._outer_loop(
-                        val_batches[i*self.batch_size: (i+1)*self.batch_size], train=False)
+                        val_batches[j*self.batch_size: (j+1)*self.batch_size], train=False)
                     val_mse_losses.append(mse_loss)
                     val_mae_losses.append(mae_loss)
 
