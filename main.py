@@ -4,6 +4,7 @@ from models.meta_loss_model import MetaLossNetwork, MetaTaskLstmNetwork
 from inner_loop_optimizers import GradientDescentLearningRule, LSLRGradientDescentLearningRule
 from dataloader import DataLoader
 from options import args
+import wandb
 
 import torch
 import torch.nn as nn
@@ -126,7 +127,7 @@ class MAML:
         if self.use_lstm:
             self._lstm_lr = args.lstm_lr
             self.task_lstm_network = MetaTaskLstmNetwork(
-                input_size=args.lstm_input_size, lstm_hidden=args.lstm_hidden, num_lstm_layers=args.lstm_num_layers).to(self.device)
+                input_size=args.lstm_input_size, lstm_hidden=args.lstm_hidden, num_lstm_layers=args.lstm_num_layers, lstm_out=num_loss_dims).to(self.device)
             self.task_lstm_optimizer = optim.Adam(
                 self.task_lstm_network.parameters(), lr=self._lstm_lr)
 
@@ -201,7 +202,65 @@ class MAML:
 
         return names_weights_copy
 
-    # forward on query data
+    # zero_grad all meta parameters
+    def zero_grad(self):
+        # initialize meta parameters
+        self.meta_optimizer.zero_grad()
+        if self.use_adaptive_loss:
+            self.loss_optimizer.zero_grad()
+        if self.use_lstm:
+            self.task_lstm_optimizer.zero_grad()
+        if self.use_adaptive_loss_weight:
+            self.task_info_optimizer.zero_grad()
+        if self._use_learnable_params:
+            self.lr_optimizer.zero_grad()
+
+    def update_meta_params(self, mse_loss):
+        mse_loss.backward()
+        total_norm = 0.0
+        for p in self.model.parameters():
+            param_norm = p.grad.detach().data.norm(2)
+            total_norm += param_norm.item() ** 2
+        total_norm = total_norm ** 0.5
+        torch.nn.utils.clip_grad_norm_(
+            self.model.parameters(), max_norm=5.0)
+        print(total_norm)
+
+        self.meta_optimizer.step()
+        # self.meta_lr_scheduler.step()
+        if self.use_adaptive_loss:
+            total_norm = 0.0
+            for p in self.loss_network.parameters():
+                param_norm = p.grad.detach().data.norm(2)
+                total_norm += param_norm.item() ** 2
+            total_norm = total_norm ** 0.5
+            print(total_norm)
+
+            self.loss_optimizer.step()
+            # self.loss_lr_scheduler.step()
+        if self.use_lstm:
+            total_norm = 0.0
+            for p in self.task_lstm_network.parameters():
+                param_norm = p.grad.detach().data.norm(2)
+                total_norm += param_norm.item() ** 2
+            total_norm = total_norm ** 0.5
+            print(total_norm)
+
+            self.task_lstm_optimizer.step()
+        if self.use_adaptive_loss_weight:
+            self.task_info_optimizer.step()
+            # self.task_info_lr_scheduler.step()
+        if self._use_learnable_params:
+            total_norm = 0.0
+            for p in self.inner_loop_optimizer.parameters():
+                param_norm = p.grad.detach().data.norm(2)
+                total_norm += param_norm.item() ** 2
+            total_norm = total_norm ** 0.5
+            print(total_norm)
+            self.lr_optimizer.step()
+
+        # forward on query data
+
     def query_forward(self, query_inputs, query_target_rating, names_weights_copy, mae_loss_fn, imp_weight=1):
         '''
         Update gradient values of meta learning parameters
@@ -236,6 +295,46 @@ class MAML:
         query_loss = query_loss * imp_weight
 
         return query_loss, query_out_loss, mae_loss
+
+    def compute_adaptive_loss(self, loss, names_weights_copy, inputs, target_rating, step):
+        support_task_state = []
+        # normalize task information
+        for v in names_weights_copy.values():
+            support_task_state.append(v.mean())
+        support_task_state.append(loss.mean())
+        support_task_state = torch.stack(support_task_state)
+        support_task_state_adapt = (
+            support_task_state - support_task_state.mean())/(support_task_state.std() + 1e-12)
+
+        if self.use_lstm:
+            task_input = torch.cat(
+                (inputs[3], target_rating), dim=1).reshape(-1, self.args.max_seq_len, 1)/5.0
+            b, t, _ = task_input.shape
+
+            task_info, (h_out, c_out) = self.task_lstm_network(
+                task_input)
+            task_info = task_info[:, -1, :]
+            # task_info = loss * task_info
+            task_info = task_info.mean(dim=0)
+            # task_info_adapt = (task_info-task_info.mean(dim=1, keepdim=True)) / \
+            #     (task_info.std(dim=1, keepdim=True) + 1e-5)
+            task_adapt = task_info * support_task_state
+            loss = self.loss_network(task_adapt, step).squeeze()
+            # loss = torch.mean(loss)
+
+        else:
+            loss = torch.mean(loss)
+            task_info_adapt = (task_info-task_info.mean()) / \
+                (task_info.std() + 1e-12)
+            if self.use_adaptive_loss_weight:
+                weight = self.task_info_network(task_info_adapt)[0]
+                loss += (weight *
+                         self.loss_network(support_task_state_adapt, step)).squeeze()
+            else:
+                loss += self.loss_network(
+                    support_task_state_adapt.reshape(1, -1), step).squeeze()
+
+        return loss
 
     # inner loop optimization
     def _inner_loop(self, support_data, task_info, query_inputs, query_target_rating, train):
@@ -292,41 +391,8 @@ class MAML:
 
             # adaptive loss
             if self.use_adaptive_loss:
-                support_task_state = []
-                # normalize task information
-                for v in names_weights_copy.values():
-                    support_task_state.append(v.mean())
-                support_task_state.append(loss.mean())
-                support_task_state = torch.stack(support_task_state)
-                support_task_state_adapt = (
-                    support_task_state - support_task_state.mean())/(support_task_state.std() + 1e-12)
-
-                if self.use_lstm:
-                    task_input = torch.cat(
-                        (inputs[3], target_rating), dim=1).reshape(-1, self.args.max_seq_len, 1)/5.0
-                    b, t, _ = task_input.shape
-
-                    task_info, (h_out, c_out) = self.task_lstm_network(
-                        task_input)
-                    task_info = task_info[:, -1, :]
-                    # task_info = loss * task_info
-                    task_info = torch.cat((loss, task_info), dim=1)
-                    # task_info_adapt = (task_info-task_info.mean(dim=1, keepdim=True)) / \
-                    #     (task_info.std(dim=1, keepdim=True) + 1e-5)
-                    loss = self.loss_network(task_info, step)
-                    loss = torch.mean(loss)
-
-                else:
-                    loss = torch.mean(loss)
-                    task_info_adapt = (task_info-task_info.mean()) / \
-                        (task_info.std() + 1e-12)
-                    if self.use_adaptive_loss_weight:
-                        weight = self.task_info_network(task_info_adapt)[0]
-                        loss += (weight *
-                                 self.loss_network(support_task_state_adapt, step)).squeeze()
-                    else:
-                        loss += self.loss_network(
-                            support_task_state_adapt.reshape(1, -1), step).squeeze()
+                loss = self.compute_adaptive_loss(
+                    loss, names_weights_copy, inputs, target_rating, step)
 
             else:
                 loss = torch.mean(loss)
@@ -378,16 +444,7 @@ class MAML:
         mse_loss_out_batch = []
         mae_loss_batch = []
 
-        # initialize meta parameters
-        self.meta_optimizer.zero_grad()
-        if self.use_adaptive_loss:
-            self.loss_optimizer.zero_grad()
-        if self.use_lstm:
-            self.task_lstm_optimizer.zero_grad()
-        if self.use_adaptive_loss_weight:
-            self.task_info_optimizer.zero_grad()
-        if self._use_learnable_params:
-            self.lr_optimizer.zero_grad()
+        self.zero_grad()
 
         if train:
             self.model.train()
@@ -421,52 +478,12 @@ class MAML:
         mae_loss = np.mean(mae_loss_batch)
         # Update meta parameters
         if train:
-            mse_loss.backward()
-            total_norm = 0.0
-            for p in self.model.parameters():
-                param_norm = p.grad.detach().data.norm(2)
-                total_norm += param_norm.item() ** 2
-            total_norm = total_norm ** 0.5
-            torch.nn.utils.clip_grad_norm_(
-                self.model.parameters(), max_norm=5.0)
-            print(total_norm)
-
-            self.meta_optimizer.step()
-            # self.meta_lr_scheduler.step()
-            if self.use_adaptive_loss:
-                total_norm = 0.0
-                for p in self.loss_network.parameters():
-                    param_norm = p.grad.detach().data.norm(2)
-                    total_norm += param_norm.item() ** 2
-                total_norm = total_norm ** 0.5
-                print(total_norm)
-
-                self.loss_optimizer.step()
-                # self.loss_lr_scheduler.step()
-            if self.use_lstm:
-                total_norm = 0.0
-                for p in self.task_lstm_network.parameters():
-                    param_norm = p.grad.detach().data.norm(2)
-                    total_norm += param_norm.item() ** 2
-                total_norm = total_norm ** 0.5
-                print(total_norm)
-
-                self.task_lstm_optimizer.step()
-            if self.use_adaptive_loss_weight:
-                self.task_info_optimizer.step()
-                # self.task_info_lr_scheduler.step()
-            if self._use_learnable_params:
-                total_norm = 0.0
-                for p in self.inner_loop_optimizer.parameters():
-                    param_norm = p.grad.detach().data.norm(2)
-                    total_norm += param_norm.item() ** 2
-                total_norm = total_norm ** 0.5
-                print(total_norm)
-                self.lr_optimizer.step()
+            self.update_meta_params(mse_loss)
 
         return mse_loss_show, rmse_loss, mae_loss
 
     def train(self, train_steps):
+        wandb.init(project="MELO")
         """Train the MAML.
 
         Optimizes MAML meta-parameters
@@ -480,6 +497,7 @@ class MAML:
 
         # define tensorboard writer
         writer = SummaryWriter(log_dir=self._log_dir)
+        wandb.config.update(self.args)
 
         # set validation tasks
         val_batches = self.dataloader.generate_task(
@@ -530,6 +548,7 @@ class MAML:
                     f'Val RMSE loss: {rmse_loss:.4f} | '
                     f'Val MAE loss: {mae_loss:.4f} | '
                 )
+                wandb.log({"loss": rmse_loss})
 
                 # Save the best model wrt valid rmse loss
                 if self.best_valid_rmse_loss > rmse_loss:
@@ -615,7 +634,7 @@ class MAML:
             load meta paramters
         '''
         target_path = os.path.join(
-            self._save_dir, f"{checkpoint_step}_best.pt")
+            self._save_dir, f"{self.args.model}_{checkpoint_step}_best.pt")
         print("Loading checkpoint from", target_path)
         try:
             if torch.cuda.is_available():
@@ -641,7 +660,8 @@ class MAML:
         '''
             save meta paramters
         '''
-        save_path = os.path.join(self._save_dir, f"{self._train_step}_best.pt")
+        save_path = os.path.join(
+            self._save_dir, f"{self.args.model}_{self._train_step}_best.pt")
         model_dict = {
             'meta_model': self.model.state_dict()
         }
@@ -652,29 +672,6 @@ class MAML:
         if self.use_lstm:
             model_dict['lstm_model'] = self.task_lstm_network.state_dict()
         torch.save(model_dict, save_path)
-
-    def load_pretrained_bert(self, filename):
-        '''
-            load pretrained bert model
-        '''
-        pretrained_path = os.path.join('./pretrained', filename)
-        print("Loading Pretrained Model")
-        try:
-            if torch.cuda.is_available():
-                def map_location(storage, loc): return storage.cuda()
-            else:
-                map_location = 'cpu'
-
-            if self.args.load_save_bert:
-                self.model.bert.load_state_dict(torch.load(
-                    pretrained_path, map_location=map_location))
-            else:
-                self.model.load_state_dict(torch.load(
-                    pretrained_path, map_location=map_location))
-
-        except:
-            raise ValueError(
-                f'No Pretrained Model or something goes wrong.')
 
 
 def main(args):
@@ -687,19 +684,6 @@ def main(args):
         args
     )
 
-    if args.load_pretrained:
-        dir = os.listdir('./pretrained')
-        if len(dir) != 0:
-            for filename in dir:
-                if 'best' in filename:
-                    maml.load_pretrained_bert(filename)
-                    break
-        else:
-            print("No pretrained model - skip loading")
-
-    else:
-        print('Pretrained Model loading skipped')
-
     if args.checkpoint_step > -1:
         maml._train_step = args.checkpoint_step
         maml.load(args.checkpoint_step)
@@ -707,9 +691,10 @@ def main(args):
         print('Checkpoint loading skipped.')
 
     if not args.test:
-        maml.train(args.num_train_iterations)
-        # maml.test_baseline()
-
+        if args.test_baseline:
+            maml.test_baseline()
+        else:
+            maml.train(args.num_train_iterations)
     else:
         maml.test()
 

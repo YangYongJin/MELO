@@ -220,7 +220,7 @@ class MetaBERT4Rec(nn.Module):
         x = self.out1(x, params=out1_params)
         x = self.relu(x)
         x = self.out2(x, params=out2_params)
-        return 0.1 + torch.sigmoid(x)
+        return x# 0.1 + torch.sigmoid(x)
 
     def zero_grad(self, params=None):
         if params is None:

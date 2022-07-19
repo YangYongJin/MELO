@@ -7,6 +7,9 @@
 Data/
 log/
 log_pretrained/
+wandb/
+
+test.py
 
 # Created by .ignore support plugin (hsz.mobi)
 ### JetBrains template
