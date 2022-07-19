@@ -30,6 +30,8 @@ parser.add_argument('--random_seed', type=int, default=222,
 # hyperparmeters for training
 parser.add_argument('--num_inner_steps', type=int, default=5,
                     help='number of inner-loop updates')
+parser.add_argument('--use_learnable_params', type=boolean_string, default=True,
+                    help='use learnable params or not learnable params')
 parser.add_argument('--inner_lr', type=float, default=1e-2,
                     help='inner-loop learning rate initialization')
 parser.add_argument('--outer_lr', type=float, default=1e-4,
@@ -40,6 +42,8 @@ parser.add_argument('--task_info_lr', type=float, default=1e-3,
                     help='outer-loop learning rate')
 parser.add_argument('--lstm_lr', type=float, default=1e-2,
                     help='lstm learning rate')
+parser.add_argument('--learn_lr', type=float, default=1e-3,
+                    help='learning rate of learning rate')
 parser.add_argument('--fc_weight_decay', type=float, default=0.1,
                     help='fc layer weight decay')
 parser.add_argument('--num_train_iterations', type=int, default=2000,

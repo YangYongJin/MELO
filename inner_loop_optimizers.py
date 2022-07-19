@@ -97,7 +97,7 @@ class LSLRGradientDescentLearningRule(nn.Module):
         #     param.fill_(self.init_learning_rate)
         pass
 
-    def update_params(self, names_weights_dict, names_grads_wrt_params_dict, num_step, tau=0.1):
+    def update_params(self, names_weights_dict, names_grads_wrt_params_dict, num_step):
         """Applies a single gradient descent update to all parameters.
         All parameter updates are performed using in-place operations and so
         nothing is returned.

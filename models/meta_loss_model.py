@@ -4,11 +4,11 @@ import math
 import torch.nn.functional as F
 
 
-class MetaLossNetwork(nn.Module):
+class MetaStepLossNetwork(nn.Module):
     def __init__(self, num_loss_hidden, num_loss_layers):
         super().__init__()
-        self.in_linear = nn.Linear(num_loss_hidden, num_loss_hidden, bias=True)
-        self.attention = nn.MultiheadAttention(1, 1, batch_first=True)
+        # self.in_linear = nn.Linear(num_loss_hidden, num_loss_hidden, bias=True)
+        # self.attention = nn.MultiheadAttention(1, 1, batch_first=True)
         self.layers = nn.ModuleList()
         for _ in range(num_loss_layers-1):
             self.layers.append(nn.Sequential(
@@ -18,13 +18,26 @@ class MetaLossNetwork(nn.Module):
         self.layers.append(nn.Linear(num_loss_hidden, 1, bias=False))
 
     def forward(self, x):
-        x = self.in_linear(x)
-        b, c = x.shape
-        x = x.reshape(b, c, 1)
-        x, _ = self.attention(x, x, x)
-        x = x.reshape(b, c)
+        # x = self.in_linear(x)
+        # b, c = x.shape
+        # x = x.reshape(b, c, 1)
+        # x, _ = self.attention(x, x, x)
+        # x = x.reshape(b, c)
         for layer in self.layers:
             x = layer(x)
+        return x
+
+
+class MetaLossNetwork(nn.Module):
+    def __init__(self, num_inner_steps, num_loss_hidden, num_loss_layers):
+        super().__init__()
+        self.loss_layers = nn.ModuleList()
+        for _ in range(num_inner_steps):
+            self.loss_layers.append(MetaStepLossNetwork(
+                num_loss_hidden, num_loss_layers))
+
+    def forward(self, x, step):
+        x = self.loss_layers[step](x)
         return x
 
 

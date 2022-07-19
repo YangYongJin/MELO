@@ -1,6 +1,7 @@
+from tkinter.font import names
 from models import model_factory
 from models.meta_loss_model import MetaLossNetwork, MetaTaskLstmNetwork
-from inner_loop_optimizers import GradientDescentLearningRule
+from inner_loop_optimizers import GradientDescentLearningRule, LSLRGradientDescentLearningRule
 from dataloader import DataLoader
 from options import args
 
@@ -40,7 +41,7 @@ class MAML:
         self.args.device = self.device
 
         # define model (theta)
-        self.model = model_factory(args).to(self.device)
+        self.model = model_factory(self.args).to(self.device)
 
         # set log and save directories
         self._log_dir = args.log_dir
@@ -61,8 +62,17 @@ class MAML:
         self.normalize_loss = self.args.normalize_loss
 
         # inner loop optimizer
-        self.inner_loop_optimizer = GradientDescentLearningRule(
-            self.device, learning_rate=self._inner_lr)
+        # self.inner_loop_optimizer = GradientDescentLearningRule(
+        #     self.device, learning_rate=self._inner_lr)
+        self._use_learnable_params = args.use_learnable_params
+        self.inner_loop_optimizer = LSLRGradientDescentLearningRule(
+            device=self.device, total_num_inner_loop_steps=self._num_inner_steps, use_learnable_learning_rates=self._use_learnable_params, init_learning_rate=self._inner_lr)
+        self.inner_loop_optimizer.initialise(
+            names_weights_dict=self.get_inner_loop_parameter_dict(params=self.model.named_parameters()))
+        if self._use_learnable_params:
+            self._learning_lr = args.learn_lr
+            self.lr_optimizer = optim.Adam(
+                self.inner_loop_optimizer.parameters(), lr=self._learning_lr)
 
         # meta optimizer
         self.meta_optimizer = optim.Adam(
@@ -84,12 +94,10 @@ class MAML:
         # settings for adaptive loss
         if self.use_adaptive_loss:
             self._loss_lr = args.loss_lr
-            self.task_info_loss = args.task_info_loss
-            num_loss_dims = self.task_info_loss * 1 + 1*args.task_info_rating_mean + 1 * \
-                args.task_info_rating_std + 1*args.task_info_num_samples + \
-                5*args.task_info_rating_distribution
+            num_loss_dims = len(self.get_inner_loop_parameter_dict(
+                params=self.model.named_parameters()).keys()) + 1
             self.loss_network = MetaLossNetwork(
-                num_loss_dims, args.loss_num_layers).to(self.device)
+                self._num_inner_steps, num_loss_dims, args.loss_num_layers).to(self.device)
             self.loss_optimizer = optim.Adam(
                 self.loss_network.parameters(), lr=self._loss_lr)
             self.loss_lr_scheduler = optim.lr_scheduler.\
@@ -98,7 +106,9 @@ class MAML:
 
          # settings for adaptive loss weight
         if self.use_adaptive_loss_weight:
-            num_loss_weight_dims = num_loss_dims - self.task_info_loss * 1
+            num_loss_weight_dims = 1*args.task_info_rating_mean + 1 * \
+                args.task_info_rating_std + 1*args.task_info_num_samples + \
+                5*args.task_info_rating_distribution
             self._task_info_lr = args.task_info_lr
             self.task_info_network = nn.Sequential(
                 nn.Linear(num_loss_weight_dims,
@@ -164,7 +174,7 @@ class MAML:
             if param.requires_grad
         }
 
-    def apply_inner_loop_update(self, loss, names_weights_copy, use_second_order=True):
+    def apply_inner_loop_update(self, loss, names_weights_copy, step, use_second_order=True):
         """
         Applies an inner loop update given current step's loss, the weights to update, a flag indicating whether to use
         second order derivatives and the current step's index.
@@ -187,7 +197,7 @@ class MAML:
             names_grads_copy[key] = names_grads_copy[key].sum(dim=0)
 
         names_weights_copy = self.inner_loop_optimizer.update_params(names_weights_dict=names_weights_copy,
-                                                                     names_grads_wrt_params_dict=names_grads_copy)
+                                                                     names_grads_wrt_params_dict=names_grads_copy, num_step=step)
 
         return names_weights_copy
 
@@ -282,7 +292,14 @@ class MAML:
 
             # adaptive loss
             if self.use_adaptive_loss:
+                support_task_state = []
                 # normalize task information
+                for v in names_weights_copy.values():
+                    support_task_state.append(v.mean())
+                support_task_state.append(loss.mean())
+                support_task_state = torch.stack(support_task_state)
+                support_task_state_adapt = (
+                    support_task_state - support_task_state.mean())/(support_task_state.std() + 1e-12)
 
                 if self.use_lstm:
                     task_input = torch.cat(
@@ -296,27 +313,27 @@ class MAML:
                     task_info = torch.cat((loss, task_info), dim=1)
                     # task_info_adapt = (task_info-task_info.mean(dim=1, keepdim=True)) / \
                     #     (task_info.std(dim=1, keepdim=True) + 1e-5)
-                    loss = self.loss_network(task_info)
+                    loss = self.loss_network(task_info, step)
                     loss = torch.mean(loss)
 
                 else:
                     loss = torch.mean(loss)
-                    task_info_step = torch.cat(
-                        (loss.reshape(1), task_info))
-                    task_info_adapt = (task_info_step-task_info_step.mean()) / \
-                        (task_info_step.std() + 1e-5)
+                    task_info_adapt = (task_info-task_info.mean()) / \
+                        (task_info.std() + 1e-12)
                     if self.use_adaptive_loss_weight:
-                        weight = self.task_info_network(task_info)[0]
-                        loss += weight * self.loss_network(task_info_adapt)[0]
+                        weight = self.task_info_network(task_info_adapt)[0]
+                        loss += (weight *
+                                 self.loss_network(support_task_state_adapt, step)).squeeze()
                     else:
-                        loss += self.loss_network(task_info_adapt)[0]
+                        loss += self.loss_network(
+                            support_task_state_adapt.reshape(1, -1), step).squeeze()
 
             else:
                 loss = torch.mean(loss)
 
             # update inner loop paramters phi
-            names_weights_copy = self.apply_inner_loop_update(loss=loss, names_weights_copy=names_weights_copy,
-                                                              use_second_order=True)
+            names_weights_copy = self.apply_inner_loop_update(
+                loss=loss, names_weights_copy=names_weights_copy, use_second_order=True, step=step)
 
             ##### multi step loss - update meta paramters ######
             if self.use_multi_step and self._train_step < self.args.multi_step_loss_num_epochs and train:
@@ -369,6 +386,8 @@ class MAML:
             self.task_lstm_optimizer.zero_grad()
         if self.use_adaptive_loss_weight:
             self.task_info_optimizer.zero_grad()
+        if self._use_learnable_params:
+            self.lr_optimizer.zero_grad()
 
         if train:
             self.model.train()
@@ -436,6 +455,14 @@ class MAML:
             if self.use_adaptive_loss_weight:
                 self.task_info_optimizer.step()
                 # self.task_info_lr_scheduler.step()
+            if self._use_learnable_params:
+                total_norm = 0.0
+                for p in self.inner_loop_optimizer.parameters():
+                    param_norm = p.grad.detach().data.norm(2)
+                    total_norm += param_norm.item() ** 2
+                total_norm = total_norm ** 0.5
+                print(total_norm)
+                self.lr_optimizer.step()
 
         return mse_loss_show, rmse_loss, mae_loss
 

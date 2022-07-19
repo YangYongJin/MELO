@@ -14,7 +14,6 @@ class MetaNARM(nn.Module):
     """
 
     def __init__(self, args):
-        args.device = "cpu"
         super(MetaNARM, self).__init__()
         self.hidden_size = args.narm_hidden_size
         self.n_layers = args.narm_n_layers
