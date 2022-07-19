@@ -118,7 +118,7 @@ parser.add_argument('--use_label', type=boolean_string, default=True,
                     help='use label as task information or input rating data as task information')
 
 # training options
-parser.add_argument('--multi_step_loss_num_epochs', type=int, default=500,
+parser.add_argument('--multi_step_loss_num_epochs', type=int, default=1000,
                     help='number of epochs using multi step loss')
 parser.add_argument('--use_multi_step', type=boolean_string, default=True,
                     help='use multi step loss or not')

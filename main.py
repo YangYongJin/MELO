@@ -4,6 +4,7 @@ from models.meta_loss_model import MetaLossNetwork, MetaTaskLstmNetwork
 from inner_loop_optimizers import GradientDescentLearningRule, LSLRGradientDescentLearningRule
 from dataloader import DataLoader
 from options import args
+import math
 import wandb
 
 import torch
@@ -296,7 +297,7 @@ class MAML:
 
         return query_loss, query_out_loss, mae_loss
 
-    def compute_adaptive_loss(self, loss, names_weights_copy, inputs, target_rating, step):
+    def compute_adaptive_loss(self, loss, names_weights_copy, inputs, target_rating, step, task_info):
         support_task_state = []
         # normalize task information
         for v in names_weights_copy.values():
@@ -392,7 +393,7 @@ class MAML:
             # adaptive loss
             if self.use_adaptive_loss:
                 loss = self.compute_adaptive_loss(
-                    loss, names_weights_copy, inputs, target_rating, step)
+                    loss, names_weights_copy, inputs, target_rating, step, task_info)
 
             else:
                 loss = torch.mean(loss)
@@ -532,7 +533,7 @@ class MAML:
             if i % VAL_INTERVAL == 0:
                 val_mse_losses = []
                 val_mae_losses = []
-                for j in range(len(val_batches)//self.batch_size + 1):
+                for j in range(math.ceil(len(val_batches)/self.batch_size)):
                     mse_loss, _, mae_loss = self._outer_loop(
                         val_batches[j*self.batch_size: (j+1)*self.batch_size], train=False)
                     val_mse_losses.append(mse_loss)
@@ -578,7 +579,7 @@ class MAML:
             mode="test", batch_size=self.args.num_test_data, normalized=self.normalize_loss, use_label=self.args.use_label)
         test_mse_losses = []
         test_mae_losses = []
-        for i in range(len(test_batches)//self.batch_size + 1):
+        for i in range(math.ceil(len(test_batches)/self.batch_size)):
             mse_loss, _, mae_loss = self._outer_loop(
                 test_batches[i*self.batch_size: (i+1)*self.batch_size], train=False)
             test_mse_losses.append(mse_loss)
