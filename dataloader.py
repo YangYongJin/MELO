@@ -8,7 +8,7 @@ import os
 import wget
 import zipfile
 from pathlib import Path
-# from options import args
+from options import args
 
 ROOT_FOLDER = "Data"
 
@@ -244,6 +244,18 @@ class DataLoader():
         sequences = np.asarray(sequences)
         return sequences[rand_idxs]
 
+    def make_query_seq(self, ratings, product_ids):
+        start_idx = np.random.randint(0, len(ratings)-2)
+        ratings_adapt = ratings[start_idx:]
+        product_ids_adapt = product_ids[start_idx:]
+        query_ratings = [0] * (self.max_sequence_length -
+                               len(ratings_adapt)) + ratings_adapt
+        query_product_ids = [0] * (self.max_sequence_length -
+                                   len(product_ids_adapt)) + product_ids_adapt
+        query_ratings = torch.FloatTensor(query_ratings).view(1, -1)
+        query_product_ids = torch.LongTensor(query_product_ids).view(1, -1)
+        return query_ratings, query_product_ids
+
     def preprocess_wt_subsampling(self, product_ids, ratings):
         '''
         subsampling geneartion pipieline function
@@ -261,13 +273,10 @@ class DataLoader():
             cut sequences -> get query -> subsample support 
         '''
         ratings, product_ids = self.get_sliced_sequences(product_ids, ratings)
+
+        query_ratings, query_product_ids = self.make_query_seq(
+            ratings, product_ids)
         # number of support subsamples (1+2+ ... + (n-min_window) = (n-min_window+1)*(n-min_window)/2)
-        query_ratings = [0] * (self.max_sequence_length -
-                               len(ratings)) + ratings
-        query_product_ids = [0] * (self.max_sequence_length -
-                                   len(product_ids)) + product_ids
-        query_ratings = torch.FloatTensor(query_ratings).view(1, -1)
-        query_product_ids = torch.LongTensor(query_product_ids).view(1, -1)
         cur_num_samples = (len(ratings)-self.min_sub_window_size+1) * \
             (len(ratings)-self.min_sub_window_size)//2
         num_subsamples = cur_num_samples if cur_num_samples < self.num_samples else self.num_samples
@@ -534,12 +543,12 @@ class SequenceDataset(data.Dataset):
         return (user_id, product_history, target_product_id,  product_history_ratings), target_product_rating
 
 
-# dataloader = DataLoader(args, pretraining=False)
-# tasks = dataloader.generate_task(mode="train", batch_size=25, normalized=True)
-# support, query, task = tasks[0]
-# support_user_id, support_product_history, support_target_product, support_rating_history, support_target_rating = support
-# query_user_id, query_product_history, query_target_product, query_rating_history, query_target_rating = query
-# print(support_rating_history.shape)
-# print(support_rating_history)
-# print(query_rating_history.shape)
-# print(query_rating_history)
+dataloader = DataLoader(args, pretraining=False)
+tasks = dataloader.generate_task(mode="train", batch_size=25, normalized=True)
+support, query, task = tasks[0]
+support_user_id, support_product_history, support_target_product, support_rating_history, support_target_rating = support
+query_user_id, query_product_history, query_target_product, query_rating_history, query_target_rating = query
+print(query_product_history)
+print(support_target_rating)
+print(query_rating_history)
+print(query_target_rating)

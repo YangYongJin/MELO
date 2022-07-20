@@ -19,7 +19,7 @@ class Attention(nn.Module):
             / math.sqrt(query.size(-1))
 
         if mask is not None:
-            scores = scores.masked_fill(mask == 0, -1e9)
+            scores = scores.masked_fill(mask == 0, float('-inf'))
 
         p_attn = F.softmax(scores, dim=-1)
 
@@ -162,7 +162,8 @@ class MetaBERT(nn.Module):
                 hidden, heads, hidden * 4, dropout)
 
     def forward(self, inputs, params=None):
-        # (x > 0).unsqueeze(1).repeat(1, x.size(1), 1).unsqueeze(1)
+        # x = torch.cat((inputs[1],inputs[2]),dim=1)
+        # mask = (x > 0).unsqueeze(1).repeat(1, x.size(1), 1).unsqueeze(1)
         mask = None
         param_dict = {}
         if params is not None:
@@ -220,7 +221,7 @@ class MetaBERT4Rec(nn.Module):
         x = self.out1(x, params=out1_params)
         x = self.relu(x)
         x = self.out2(x, params=out2_params)
-        return x# 0.1 + torch.sigmoid(x)
+        return 0.1 + torch.sigmoid(x)
 
     def zero_grad(self, params=None):
         if params is None:

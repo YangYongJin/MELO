@@ -34,9 +34,9 @@ parser.add_argument('--num_inner_steps', type=int, default=5,
                     help='number of inner-loop updates')
 parser.add_argument('--use_learnable_params', type=boolean_string, default=True,
                     help='use learnable params or not learnable params')
-parser.add_argument('--inner_lr', type=float, default=1e-3,
+parser.add_argument('--inner_lr', type=float, default=1e-2,
                     help='inner-loop learning rate initialization')
-parser.add_argument('--outer_lr', type=float, default=1e-4,
+parser.add_argument('--outer_lr', type=float, default=1e-3,
                     help='outer-loop bert learning rate')
 parser.add_argument('--loss_lr', type=float, default=1e-3,
                     help='outer-loop learning rate')
@@ -46,7 +46,7 @@ parser.add_argument('--lstm_lr', type=float, default=1e-3,
                     help='lstm learning rate')
 parser.add_argument('--learn_lr', type=float, default=1e-4,
                     help='learning rate of learning rate')
-parser.add_argument('--fc_weight_decay', type=float, default=0.1,
+parser.add_argument('--loss_weight_decay', type=float, default=0.1,
                     help='fc layer weight decay')
 parser.add_argument('--num_train_iterations', type=int, default=2000,
                     help='number of outer-loop updates to train for')
@@ -72,9 +72,9 @@ parser.add_argument('--model', type=str, default='bert4rec',
 # about transformer model
 parser.add_argument('--max_seq_len', type=int, default=30,
                     help='maximum sequence length')
-parser.add_argument('--bert_num_blocks', type=int, default=2,
+parser.add_argument('--bert_num_blocks', type=int, default=1,
                     help='number of bert blocks')
-parser.add_argument('--bert_num_heads', type=int, default=8,
+parser.add_argument('--bert_num_heads', type=int, default=4,
                     help='number of attention heads')
 parser.add_argument('--bert_hidden_units', type=int, default=128,
                     help='number of hidden units ')

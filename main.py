@@ -1,7 +1,6 @@
-from tkinter.font import names
 from models import model_factory
 from models.meta_loss_model import MetaLossNetwork, MetaTaskLstmNetwork
-from inner_loop_optimizers import GradientDescentLearningRule, LSLRGradientDescentLearningRule
+from inner_loop_optimizers import LSLRGradientDescentLearningRule
 from dataloader import DataLoader
 from options import args
 import math
@@ -127,8 +126,11 @@ class MAML:
         # use lstm as task information
         if self.use_lstm:
             self._lstm_lr = args.lstm_lr
+            lstm_hidden = args.lstm_hidden
+            if lstm_hidden < num_loss_dims:
+                lstm_hidden = num_loss_dims
             self.task_lstm_network = MetaTaskLstmNetwork(
-                input_size=args.lstm_input_size, lstm_hidden=args.lstm_hidden, num_lstm_layers=args.lstm_num_layers, lstm_out=num_loss_dims).to(self.device)
+                input_size=args.lstm_input_size, lstm_hidden=lstm_hidden, num_lstm_layers=args.lstm_num_layers, lstm_out=num_loss_dims).to(self.device)
             self.task_lstm_optimizer = optim.Adam(
                 self.task_lstm_network.parameters(), lr=self._lstm_lr)
 
@@ -193,10 +195,10 @@ class MAML:
                                     allow_unused=True, create_graph=use_second_order)
         names_grads_copy = dict(zip(names_weights_copy.keys(), grads))
 
-        for key, grad in names_grads_copy.items():
-            if grad is None:
-                print('Grads not found for inner loop parameter', key)
-            names_grads_copy[key] = names_grads_copy[key].sum(dim=0)
+        # for key, grad in names_grads_copy.items():
+        #     if grad is None:
+        #         print('Grads not found for inner loop parameter', key)
+        #     names_grads_copy[key] = names_grads_copy[key].sum(dim=0)
 
         names_weights_copy = self.inner_loop_optimizer.update_params(names_weights_dict=names_weights_copy,
                                                                      names_grads_wrt_params_dict=names_grads_copy, num_step=step)
@@ -453,7 +455,7 @@ class MAML:
             self.model.eval()
 
         # loop through task batch
-        for idx, task in enumerate(tqdm(task_batch)):
+        for idx, task in enumerate((task_batch)):
             # query data gpu loading
             support, query, task_info = task
             user_id, product_history, target_product_id,  product_history_ratings, target_rating = query
@@ -652,6 +654,10 @@ class MAML:
             if self.use_lstm:
                 self.task_lstm_network.load_state_dict(
                     checkpoint['lstm_model'])
+            if self._use_learnable_params:
+                self.inner_loop_optimizer.load_state_dict(
+                    checkpoint['learning_rate']
+                )
 
         except:
             raise ValueError(
@@ -672,6 +678,8 @@ class MAML:
             model_dict['loss_weight_model'] = self.task_info_network.state_dict()
         if self.use_lstm:
             model_dict['lstm_model'] = self.task_lstm_network.state_dict()
+        if self._use_learnable_params:
+            model_dict['learning_rate'] = self.inner_loop_optimizer.state_dict()
         torch.save(model_dict, save_path)
 
 
