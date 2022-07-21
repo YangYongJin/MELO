@@ -1,4 +1,4 @@
-from models.bert import BERTModel
+from models import model_factory
 from dataloader import DataLoader
 from options import args
 
@@ -30,23 +30,20 @@ class Pretrain:
         self.device = torch.device('cpu')
         if torch.cuda.is_available():
             self.device = torch.cuda.current_device()
+        self.args.device = self.device
         # bert4rec model
-        self.model = BERTModel(self.args).to(self.device)
+        self.model = model_factory(self.args).to(self.device)
 
         self._log_dir = args.pretrain_log_dir
         self._save_dir = os.path.join(args.pretrain_log_dir, 'state')
+        self._embedding_dir = os.path.join(args.pretrain_log_dir, 'embedding')
         os.makedirs(self._log_dir, exist_ok=True)
         os.makedirs(self._save_dir, exist_ok=True)
+        os.makedirs(self._embedding_dir, exist_ok=True)
 
         # whether to use multi step loss
         self._lr = args.pretraining_lr
-        self.optimizer = optim.Adam([
-            {'params': self.model.bert.parameters()},
-            {'params': self.model.dim_reduct.parameters(), 'lr': args.fc_lr,
-             'weight_decay': args.fc_weight_decay},
-            {'params': self.model.out.parameters(), 'lr': args.fc_lr,
-             'weight_decay': args.fc_weight_decay}
-        ], lr=self._lr)
+        self.optimizer = optim.Adam(self.model.parameters(), lr=self._lr)
 
         self.loss_fn = nn.MSELoss()
         self.mae_loss_fn = nn.L1Loss()
@@ -59,9 +56,6 @@ class Pretrain:
         self.lr_scheduler = optim.lr_scheduler.\
             MultiStepLR(self.optimizer, milestones=[
                         400, 700, 900], gamma=0.1)
-
-        ##### load and save whole model or only bert #####
-        self.load_save_bert = args.load_save_bert
 
         self._train_step = 0
 
@@ -190,7 +184,8 @@ class Pretrain:
         '''
             load model
         '''
-        target_path = os.path.join(self._save_dir, f"{checkpoint_step}_best")
+        target_path = os.path.join(
+            self._save_dir, f"{self.args.model}_{checkpoint_step}_no_meta_best")
         print("Loading checkpoint from", target_path)
         try:
             # set device location
@@ -199,14 +194,9 @@ class Pretrain:
             else:
                 map_location = 'cpu'
 
-            if self.load_save_bert:
-                self.model.bert.load_state_dict(
-                    torch.load(target_path, map_location=map_location)
-                )
-            else:
-                self.model.load_state_dict(
-                    torch.load(target_path, map_location=map_location)
-                )
+            self.model.load_state_dict(
+                torch.load(target_path, map_location=map_location)
+            )
 
         except:
             raise ValueError(
@@ -216,13 +206,18 @@ class Pretrain:
         '''
             save model
         '''
-        # Save a model to 'save_dir'
-        if self.load_save_bert:
-            torch.save(self.model.bert.state_dict(),
-                       os.path.join(self._save_dir, f"{self._train_step}_best"))
+        if self.args.save_embedding:
+            if self.args.model == 'sas4rec' or self.args.model == 'bert4rec':
+                torch.save(self.model.bert.bert_embedding.state_dict(),
+                           os.path.join(self._embedding_dir, f"{self.args.model}_embedding"))
+            else:
+                torch.save(self.model.embedding.state_dict(),
+                           os.path.join(self._embedding_dir, f"{self.args.model}_embedding"))
+
         else:
+            # Save a model to 'save_dir'
             torch.save(self.model.state_dict(),
-                       os.path.join(self._save_dir, f"{self._train_step}_best"))
+                       os.path.join(self._save_dir, f"{self.args.model}_{self._train_step}_no_meta_best"))
 
     def test(self):
         '''

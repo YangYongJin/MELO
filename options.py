@@ -49,7 +49,7 @@ parser.add_argument('--lstm_lr', type=float, default=1e-3,
 parser.add_argument('--learn_lr', type=float, default=1e-4,
                     help='learning rate of learning rate')
 parser.add_argument('--loss_weight_decay', type=float, default=0.1,
-                    help='fc layer weight decay')
+                    help='loss layer weight decay')
 parser.add_argument('--num_train_iterations', type=int, default=2000,
                     help='number of outer-loop updates to train for')
 
@@ -153,10 +153,10 @@ parser.add_argument('--pretrain_epochs', type=int, default=1000,
                     help='the number of epochs for pretraining')
 parser.add_argument('--pretraining_lr', type=float, default=1e-3,
                     help='learning rate during pretraining')
-parser.add_argument('--load_pretrained', type=boolean_string, default=False,
-                    help='load pretrained model or not')
-parser.add_argument('--load_save_bert', type=boolean_string, default=False,
-                    help='load and save bert or whole model at pretrain.py')
+parser.add_argument('--load_pretrained_embedding', type=boolean_string, default=False,
+                    help='load pretrained embeddding or not')
+parser.add_argument('--save_embedding', type=boolean_string, default=False,
+                    help='save embedding or whole model')
 parser.add_argument('--pretrain_log_dir', type=str, default='./log_pretrained',
                     help='directory to save to or load from pretrained')
 

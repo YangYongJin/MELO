@@ -174,6 +174,8 @@ class DataLoader():
         good_users = user_sizes.index[user_sizes >= min_sequence]
         df = df[df['user_id'].isin(good_users)]
 
+        print("total number of data", len(df))
+
         return df
 
     def densify_index(self, df):
@@ -543,21 +545,16 @@ class SequenceDataset(data.Dataset):
         target_product_rating = ratings[:, -1:]
         user_id = user_id.repeat(
             self.num_queries, 1)
-        # if self.num_queries == 1:
-        #     product_history = product_history.view(l-1)
-        #     target_product_id = target_product_id.view(1)
-        #     product_history_ratings = product_history_ratings.view(l-1)
-        #     target_product_rating = target_product_rating.view(1)
 
         return (user_id, product_history, target_product_id,  product_history_ratings), target_product_rating
 
 
-dataloader = DataLoader(args, pretraining=False)
-tasks = dataloader.generate_task(mode="train", batch_size=25, normalized=True)
-support, query, task = tasks[0]
-support_user_id, support_product_history, support_target_product, support_rating_history, support_target_rating = support
-query_user_id, query_product_history, query_target_product, query_rating_history, query_target_rating = query
-print(query_product_history)
-print(support_target_rating)
-print(query_rating_history)
-print(query_target_rating)
+# dataloader = DataLoader(args, pretraining=False)
+# tasks = dataloader.generate_task(mode="train", batch_size=25, normalized=True)
+# support, query, task = tasks[0]
+# support_user_id, support_product_history, support_target_product, support_rating_history, support_target_rating = support
+# query_user_id, query_product_history, query_target_product, query_rating_history, query_target_rating = query
+# print(query_product_history)
+# print(support_target_rating)
+# print(query_rating_history)
+# print(query_target_rating)
