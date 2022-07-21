@@ -209,15 +209,15 @@ class Pretrain:
         if self.args.save_embedding:
             if self.args.model == 'sas4rec' or self.args.model == 'bert4rec':
                 torch.save(self.model.bert.bert_embedding.state_dict(),
-                           os.path.join(self._embedding_dir, "{self.args.model}_embedding"))
+                           os.path.join(self._embedding_dir, f"{self.args.model}_embedding"))
             else:
                 torch.save(self.model.embedding.state_dict(),
-                           os.path.join(self._embedding_dir, "{self.args.model}_embedding"))
+                           os.path.join(self._embedding_dir, f"{self.args.model}_embedding"))
 
         else:
             # Save a model to 'save_dir'
             torch.save(self.model.state_dict(),
-                       os.path.join(self._save_dir, "{self.args.model}_{self._train_step}_no_meta_best"))
+                       os.path.join(self._save_dir, f"{self.args.model}_{self._train_step}_no_meta_best"))
 
     def test(self):
         '''

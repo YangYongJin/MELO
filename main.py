@@ -471,7 +471,7 @@ class MAML:
             self.model.eval()
 
         # loop through task batch
-        for idx, task in enumerate((task_batch)):
+        for idx, task in enumerate(tqdm(task_batch)):
             # query data gpu loading
             support, query, task_info = task
             user_id, product_history, target_product_id,  product_history_ratings, target_rating = query
@@ -706,12 +706,12 @@ class MAML:
 
         if self.args.model == 'sas4rec' or self.args.model == 'bert4rec':
             self.model.bert.bert_embedding.load_state_dict(torch.load(
-                os.path.join(self._embedding_dir, "{self.args.model}_embedding"), map_location=map_location))
+                os.path.join(self._embedding_dir, f"{self.args.model}_embedding"), map_location=map_location))
             for param in self.model.bert.bert_embedding.parameters():
                 param.requires_grad = False
         else:
             self.model.embedding.load_state_dict(torch.load(
-                os.path.join(self._embedding_dir, "{self.args.model}_embedding"), map_location=map_location))
+                os.path.join(self._embedding_dir, f"{self.args.model}_embedding"), map_location=map_location))
             for param in self.model.embedding.parameters():
                 param.requires_grad = False
 
