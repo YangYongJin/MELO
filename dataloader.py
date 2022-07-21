@@ -25,7 +25,7 @@ class DataLoader():
             samples_per_task : number of subsamples for each user
             num_test_data : the number of test data
             random_seed : random seed for test data sampling
-            mode : "amazon" or "ml-1m"
+            mode : "amazon" or "ml-1m" or "yelp"
             default_rating : padding options
             pretraining : when used for pretraining or single bert model
             pretraining_batch_size : batch size during pretraining
@@ -77,7 +77,7 @@ class DataLoader():
             data_path : path of file containing target data
             min_sequence : minimum sequence used to filter users
             min_item : minimum item size used to filter items
-            mode : "amazon" or "ml-1m"
+            mode : "amazon" or "ml-1m" or "yelp"
 
         return:
             df : preprocessed data
@@ -95,6 +95,12 @@ class DataLoader():
             raw_df = pd.read_csv(data_path, usecols=[
                 'rating', 'reviewerID', 'product_id', 'date'])
             raw_df.rename(columns={'reviewerID': 'user_id'}, inplace=True)
+        elif mode == "yelp":
+            # choose appropriate columns
+            raw_df = pd.read_csv(data_path, usecols=[
+                'stars', 'user_id', 'business_id', 'timestamp'])
+            raw_df.rename(columns={'business_id': 'product_id'}, inplace=True)
+            raw_df.rename(columns={'timestamp': 'date'}, inplace=True)
 
         # filter user with lack of reviews
         raw_df = self.filter_triplets(raw_df, min_sequence, min_item)

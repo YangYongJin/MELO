@@ -14,7 +14,7 @@ parser.add_argument('--log_dir', type=str, default='./log',
 parser.add_argument('--data_path', type=str, default='./Data/ml-1m/ratings.dat',
                     help='data path')
 parser.add_argument('--mode', type=str, default='ml-1m',
-                    help='ml-1m or amazon')
+                    help='ml-1m or amazon or yelp')
 parser.add_argument('--test', default=False, action='store_true',
                     help='train or test')
 parser.add_argument('--test_baseline', default=False, action='store_true',
