@@ -167,7 +167,10 @@ class MetaBERT(nn.Module):
         param_dict = {}
         if params is not None:
             param_dict = extract_top_level_dict(current_dict=params)
-            bert_embedding_params = param_dict['bert_embedding']
+            if 'bert_embedding' not in param_dict.keys():
+                bert_embedding_params = None
+            else:
+                bert_embedding_params = param_dict['bert_embedding']
         else:
             bert_embedding_params = None
 

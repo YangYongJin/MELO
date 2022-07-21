@@ -151,10 +151,10 @@ parser.add_argument('--pretrain_epochs', type=int, default=1000,
                     help='the number of epochs for pretraining')
 parser.add_argument('--pretraining_lr', type=float, default=1e-3,
                     help='learning rate during pretraining')
-parser.add_argument('--load_pretrained', type=boolean_string, default=False,
-                    help='load pretrained model or not')
-parser.add_argument('--load_save_bert', type=boolean_string, default=False,
-                    help='load and save bert or whole model at pretrain.py')
+parser.add_argument('--load_pretrained_embedding', type=boolean_string, default=False,
+                    help='load pretrained embeddding or not')
+parser.add_argument('--save_embedding', type=boolean_string, default=False,
+                    help='save embedding or whole model')
 parser.add_argument('--pretrain_log_dir', type=str, default='./log_pretrained',
                     help='directory to save to or load from pretrained')
 

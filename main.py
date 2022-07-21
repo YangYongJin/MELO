@@ -54,8 +54,12 @@ class MAML:
         # set log and save directories
         self._log_dir = args.log_dir
         self._save_dir = os.path.join(args.log_dir, 'state')
+        self._embedding_dir = os.path.join(args.pretrain_log_dir, 'embedding')
         os.makedirs(self._log_dir, exist_ok=True)
         os.makedirs(self._save_dir, exist_ok=True)
+
+        if args.load_pretrained_embedding:
+            self._load_pretrained_embedding()
 
         # whether to use multi step loss
         self.use_multi_step = args.use_multi_step
@@ -180,7 +184,7 @@ class MAML:
         :return: A dictionary of the parameters to use for the inner loop optimization process.
         """
         return {
-            name: param
+            name: param.to(self.device)
             for name, param in params
             if param.requires_grad
         }
@@ -229,8 +233,9 @@ class MAML:
         mse_loss.backward()
         total_norm = 0.0
         for p in self.model.parameters():
-            param_norm = p.grad.detach().data.norm(2)
-            total_norm += param_norm.item() ** 2
+            if p.requires_grad:
+                param_norm = p.grad.detach().data.norm(2)
+                total_norm += param_norm.item() ** 2
         total_norm = total_norm ** 0.5
         torch.nn.utils.clip_grad_norm_(
             self.model.parameters(), max_norm=5.0)
@@ -241,8 +246,9 @@ class MAML:
         if self.use_adaptive_loss:
             total_norm = 0.0
             for p in self.loss_network.parameters():
-                param_norm = p.grad.detach().data.norm(2)
-                total_norm += param_norm.item() ** 2
+                if p.requires_grad:
+                    param_norm = p.grad.detach().data.norm(2)
+                    total_norm += param_norm.item() ** 2
             total_norm = total_norm ** 0.5
             print(total_norm)
 
@@ -251,8 +257,9 @@ class MAML:
         if self.use_lstm:
             total_norm = 0.0
             for p in self.task_lstm_network.parameters():
-                param_norm = p.grad.detach().data.norm(2)
-                total_norm += param_norm.item() ** 2
+                if p.requires_grad:
+                    param_norm = p.grad.detach().data.norm(2)
+                    total_norm += param_norm.item() ** 2
             total_norm = total_norm ** 0.5
             print(total_norm)
 
@@ -263,8 +270,9 @@ class MAML:
         if self._use_learnable_params:
             total_norm = 0.0
             for p in self.inner_loop_optimizer.parameters():
-                param_norm = p.grad.detach().data.norm(2)
-                total_norm += param_norm.item() ** 2
+                if p.requires_grad:
+                    param_norm = p.grad.detach().data.norm(2)
+                    total_norm += param_norm.item() ** 2
             total_norm = total_norm ** 0.5
             print(total_norm)
             self.lr_optimizer.step()
@@ -311,6 +319,7 @@ class MAML:
         # normalize task information
         for v in names_weights_copy.values():
             support_task_state.append(v.mean())
+
         support_task_state.append(loss.mean())
         support_task_state = torch.stack(support_task_state)
         support_task_state_adapt = (
@@ -688,6 +697,23 @@ class MAML:
         if self._use_learnable_params:
             model_dict['learning_rate'] = self.inner_loop_optimizer.state_dict()
         torch.save(model_dict, save_path)
+
+    def _load_pretrained_embedding(self):
+        if torch.cuda.is_available():
+            def map_location(storage, loc): return storage.cuda()
+        else:
+            map_location = 'cpu'
+
+        if self.args.model == 'sas4rec' or self.args.model == 'bert4rec':
+            self.model.bert.bert_embedding.load_state_dict(torch.load(
+                os.path.join(self._embedding_dir, "{self.args.model}_embedding"), map_location=map_location))
+            for param in self.model.bert.bert_embedding.parameters():
+                param.requires_grad = False
+        else:
+            self.model.embedding.load_state_dict(torch.load(
+                os.path.join(self._embedding_dir, "{self.args.model}_embedding"), map_location=map_location))
+            for param in self.model.embedding.parameters():
+                param.requires_grad = False
 
 
 def main(args):

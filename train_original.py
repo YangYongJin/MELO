@@ -36,8 +36,10 @@ class Pretrain:
 
         self._log_dir = args.pretrain_log_dir
         self._save_dir = os.path.join(args.pretrain_log_dir, 'state')
+        self._embedding_dir = os.path.join(args.pretrain_log_dir, 'embedding')
         os.makedirs(self._log_dir, exist_ok=True)
         os.makedirs(self._save_dir, exist_ok=True)
+        os.makedirs(self._embedding_dir, exist_ok=True)
 
         # whether to use multi step loss
         self._lr = args.pretraining_lr
@@ -54,9 +56,6 @@ class Pretrain:
         self.lr_scheduler = optim.lr_scheduler.\
             MultiStepLR(self.optimizer, milestones=[
                         400, 700, 900], gamma=0.1)
-
-        ##### load and save whole model or only bert #####
-        self.load_save_bert = args.load_save_bert
 
         self._train_step = 0
 
@@ -207,9 +206,18 @@ class Pretrain:
         '''
             save model
         '''
-        # Save a model to 'save_dir'
-        torch.save(self.model.state_dict(),
-                   os.path.join(self._save_dir, "{self.args.model}_{self._train_step}_no_meta_best"))
+        if self.args.save_embedding:
+            if self.args.model == 'sas4rec' or self.args.model == 'bert4rec':
+                torch.save(self.model.bert.bert_embedding.state_dict(),
+                           os.path.join(self._embedding_dir, "{self.args.model}_embedding"))
+            else:
+                torch.save(self.model.embedding.state_dict(),
+                           os.path.join(self._embedding_dir, "{self.args.model}_embedding"))
+
+        else:
+            # Save a model to 'save_dir'
+            torch.save(self.model.state_dict(),
+                       os.path.join(self._save_dir, "{self.args.model}_{self._train_step}_no_meta_best"))
 
     def test(self):
         '''
