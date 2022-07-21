@@ -96,7 +96,7 @@ class MAML:
 
         # meta learning rate scheduler
         self.meta_lr_scheduler = optim.lr_scheduler.CosineAnnealingLR(
-            self.meta_optimizer, T_max=args.num_train_iterations, eta_min=1e-6)
+            self.meta_optimizer, T_max=args.num_train_iterations, eta_min=args.min_outer_lr)
         # current epoch
         self._train_step = 0
 
