@@ -14,7 +14,7 @@ parser.add_argument('--log_dir', type=str, default='./log',
 parser.add_argument('--data_path', type=str, default='./Data/ml-1m/ratings.dat',
                     help='data path')
 parser.add_argument('--mode', type=str, default='ml-1m',
-                    help='ml-1m or amazon')
+                    help='ml-1m or amazon or yelp')
 parser.add_argument('--test', default=False, action='store_true',
                     help='train or test')
 parser.add_argument('--test_baseline', default=False, action='store_true',
@@ -23,9 +23,11 @@ parser.add_argument('--checkpoint_step', type=int, default=-1,
                     help=('checkpoint iteration to load for resuming '
                           'training, or for evaluation (-1 is ignored)'))
 parser.add_argument('--num_test_data', type=int, default=1000,
-                    help=('the number of test data'))
+                    help='the number of test data')
 parser.add_argument('--min_sequence', type=int, default=5,
-                    help=('minimum number of reviews users should have'))
+                    help='minimum number of reviews users should have')
+parser.add_argument('--min_item', type=int, default=5,
+                    help='minimum number of reviews items should have')
 parser.add_argument('--random_seed', type=int, default=222,
                     help=('test data random seed'))
 
