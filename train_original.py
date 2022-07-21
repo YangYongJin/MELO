@@ -1,4 +1,4 @@
-from models.bert import BERTModel
+from models import model_factory
 from dataloader import DataLoader
 from options import args
 
@@ -30,8 +30,9 @@ class Pretrain:
         self.device = torch.device('cpu')
         if torch.cuda.is_available():
             self.device = torch.cuda.current_device()
+        self.args.device = self.device
         # bert4rec model
-        self.model = BERTModel(self.args).to(self.device)
+        self.model = model_factory(self.args).to(self.device)
 
         self._log_dir = args.pretrain_log_dir
         self._save_dir = os.path.join(args.pretrain_log_dir, 'state')
@@ -40,13 +41,7 @@ class Pretrain:
 
         # whether to use multi step loss
         self._lr = args.pretraining_lr
-        self.optimizer = optim.Adam([
-            {'params': self.model.bert.parameters()},
-            {'params': self.model.dim_reduct.parameters(), 'lr': args.fc_lr,
-             'weight_decay': args.fc_weight_decay},
-            {'params': self.model.out.parameters(), 'lr': args.fc_lr,
-             'weight_decay': args.fc_weight_decay}
-        ], lr=self._lr)
+        self.optimizer = optim.Adam(self.model.parameters(), lr=self._lr)
 
         self.loss_fn = nn.MSELoss()
         self.mae_loss_fn = nn.L1Loss()
@@ -190,7 +185,8 @@ class Pretrain:
         '''
             load model
         '''
-        target_path = os.path.join(self._save_dir, f"{checkpoint_step}_best")
+        target_path = os.path.join(
+            self._save_dir, f"{self.args.model}_{checkpoint_step}_no_meta_best")
         print("Loading checkpoint from", target_path)
         try:
             # set device location
@@ -199,14 +195,9 @@ class Pretrain:
             else:
                 map_location = 'cpu'
 
-            if self.load_save_bert:
-                self.model.bert.load_state_dict(
-                    torch.load(target_path, map_location=map_location)
-                )
-            else:
-                self.model.load_state_dict(
-                    torch.load(target_path, map_location=map_location)
-                )
+            self.model.load_state_dict(
+                torch.load(target_path, map_location=map_location)
+            )
 
         except:
             raise ValueError(
@@ -217,12 +208,8 @@ class Pretrain:
             save model
         '''
         # Save a model to 'save_dir'
-        if self.load_save_bert:
-            torch.save(self.model.bert.state_dict(),
-                       os.path.join(self._save_dir, f"{self._train_step}_best"))
-        else:
-            torch.save(self.model.state_dict(),
-                       os.path.join(self._save_dir, f"{self._train_step}_best"))
+        torch.save(self.model.state_dict(),
+                   os.path.join(self._save_dir, "{self.args.model}_{self._train_step}_no_meta_best"))
 
     def test(self):
         '''

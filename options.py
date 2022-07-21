@@ -47,7 +47,7 @@ parser.add_argument('--lstm_lr', type=float, default=1e-3,
 parser.add_argument('--learn_lr', type=float, default=1e-4,
                     help='learning rate of learning rate')
 parser.add_argument('--loss_weight_decay', type=float, default=0.1,
-                    help='fc layer weight decay')
+                    help='loss layer weight decay')
 parser.add_argument('--num_train_iterations', type=int, default=2000,
                     help='number of outer-loop updates to train for')
 

@@ -44,6 +44,13 @@ class MAML:
         # define model (theta)
         self.model = model_factory(self.args).to(self.device)
 
+        # model_parameters = filter(
+        #     lambda p: p.requires_grad, self.model.bert.bert_embedding.parameters())
+
+        # params = sum([np.prod(p.size()) for p in model_parameters])
+        # print('# of params', params)
+        # 1/0
+
         # set log and save directories
         self._log_dir = args.log_dir
         self._save_dir = os.path.join(args.log_dir, 'state')
@@ -100,7 +107,7 @@ class MAML:
             self.loss_network = MetaLossNetwork(
                 self._num_inner_steps, num_loss_dims, args.loss_num_layers).to(self.device)
             self.loss_optimizer = optim.Adam(
-                self.loss_network.parameters(), lr=self._loss_lr)
+                self.loss_network.parameters(), lr=self._loss_lr, weight_decay=args.loss_weight_decay)
             self.loss_lr_scheduler = optim.lr_scheduler.\
                 MultiStepLR(self.loss_optimizer, milestones=[
                             500, 800, 950], gamma=0.7)

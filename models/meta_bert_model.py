@@ -17,7 +17,6 @@ class Attention(nn.Module):
     def forward(self, query, key, value, mask=None, dropout=None):
         scores = torch.matmul(query, key.transpose(-2, -1)) \
             / math.sqrt(query.size(-1))
-
         if mask is not None:
             scores = scores.masked_fill(mask == 0, float('-inf'))
 
@@ -162,9 +161,9 @@ class MetaBERT(nn.Module):
                 hidden, heads, hidden * 4, dropout)
 
     def forward(self, inputs, params=None):
-        # x = torch.cat((inputs[1],inputs[2]),dim=1)
-        # mask = (x > 0).unsqueeze(1).repeat(1, x.size(1), 1).unsqueeze(1)
-        mask = None
+        x = torch.cat((inputs[1], inputs[2]), dim=1)
+        mask = (x > 0).unsqueeze(1).repeat(1, x.size(1), 1).unsqueeze(1)
+        # mask = None
         param_dict = {}
         if params is not None:
             param_dict = extract_top_level_dict(current_dict=params)
