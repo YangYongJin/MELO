@@ -55,11 +55,15 @@ class MAML:
         self._log_dir = args.log_dir
         self._save_dir = os.path.join(args.log_dir, 'state')
         self._embedding_dir = os.path.join(args.pretrain_log_dir, 'embedding')
+        self._pretrained_dir = os.path.join(
+            args.pretrain_log_dir, 'pretrained')
         os.makedirs(self._log_dir, exist_ok=True)
         os.makedirs(self._save_dir, exist_ok=True)
 
         if args.load_pretrained_embedding:
             self._load_pretrained_embedding()
+        elif args.load_pretrained:
+            self._load_pretrained()
 
         # whether to use multi step loss
         self.use_multi_step = args.use_multi_step
@@ -139,7 +143,7 @@ class MAML:
             self._lstm_lr = args.lstm_lr
             lstm_hidden = args.lstm_hidden
             if lstm_hidden < num_loss_dims:
-                lstm_hidden = num_loss_dims
+                lstm_hidden = num_loss_dims+1
             self.task_lstm_network = MetaTaskLstmNetwork(
                 input_size=args.lstm_input_size, lstm_hidden=lstm_hidden, num_lstm_layers=args.lstm_num_layers, lstm_out=num_loss_dims).to(self.device)
             self.task_lstm_optimizer = optim.Adam(
@@ -707,13 +711,22 @@ class MAML:
         if self.args.model == 'sas4rec' or self.args.model == 'bert4rec':
             self.model.bert.bert_embedding.load_state_dict(torch.load(
                 os.path.join(self._embedding_dir, f"{self.args.model}_embedding"), map_location=map_location))
-            for param in self.model.bert.bert_embedding.parameters():
-                param.requires_grad = False
+            # for param in self.model.bert.bert_embedding.parameters():
+                # param.requires_grad = False
         else:
             self.model.embedding.load_state_dict(torch.load(
                 os.path.join(self._embedding_dir, f"{self.args.model}_embedding"), map_location=map_location))
-            for param in self.model.embedding.parameters():
-                param.requires_grad = False
+            # for param in self.model.embedding.parameters():
+                # param.requires_grad = False
+
+    def _load_pretrained(self):
+        if torch.cuda.is_available():
+            def map_location(storage, loc): return storage.cuda()
+        else:
+            map_location = 'cpu'
+
+        self.model.load_state_dict(torch.load(
+            os.path.join(self._pretrained_dir, f"{self.args.model}_pretrained"), map_location=map_location))
 
 
 def main(args):

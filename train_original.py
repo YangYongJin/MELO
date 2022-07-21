@@ -37,9 +37,12 @@ class Pretrain:
         self._log_dir = args.pretrain_log_dir
         self._save_dir = os.path.join(args.pretrain_log_dir, 'state')
         self._embedding_dir = os.path.join(args.pretrain_log_dir, 'embedding')
+        self._pretrained_dir = os.path.join(
+            args.pretrain_log_dir, 'pretrained')
         os.makedirs(self._log_dir, exist_ok=True)
         os.makedirs(self._save_dir, exist_ok=True)
         os.makedirs(self._embedding_dir, exist_ok=True)
+        os.makedirs(self._pretrained_dir, exist_ok=True)
 
         # whether to use multi step loss
         self._lr = args.pretraining_lr
@@ -206,7 +209,7 @@ class Pretrain:
         '''
             save model
         '''
-        if self.args.save_embedding:
+        if self.args.save_pretrained:
             if self.args.model == 'sas4rec' or self.args.model == 'bert4rec':
                 torch.save(self.model.bert.bert_embedding.state_dict(),
                            os.path.join(self._embedding_dir, f"{self.args.model}_embedding"))
@@ -214,6 +217,9 @@ class Pretrain:
                 torch.save(self.model.embedding.state_dict(),
                            os.path.join(self._embedding_dir, f"{self.args.model}_embedding"))
 
+            # Save a model to 'save_dir'
+            torch.save(self.model.state_dict(),
+                       os.path.join(self._save_dir, f"{self.args.model}_pretrained"))
         else:
             # Save a model to 'save_dir'
             torch.save(self.model.state_dict(),

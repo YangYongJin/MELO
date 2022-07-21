@@ -34,9 +34,9 @@ parser.add_argument('--num_inner_steps', type=int, default=5,
                     help='number of inner-loop updates')
 parser.add_argument('--use_learnable_params', type=boolean_string, default=True,
                     help='use learnable params or not learnable params')
-parser.add_argument('--inner_lr', type=float, default=1e-2,
+parser.add_argument('--inner_lr', type=float, default=1e-3,
                     help='inner-loop learning rate initialization')
-parser.add_argument('--outer_lr', type=float, default=1e-3,
+parser.add_argument('--outer_lr', type=float, default=1e-4,
                     help='outer-loop bert learning rate')
 parser.add_argument('--loss_lr', type=float, default=1e-3,
                     help='outer-loop learning rate')
@@ -44,16 +44,16 @@ parser.add_argument('--task_info_lr', type=float, default=1e-3,
                     help='outer-loop learning rate')
 parser.add_argument('--lstm_lr', type=float, default=1e-3,
                     help='lstm learning rate')
-parser.add_argument('--learn_lr', type=float, default=1e-4,
+parser.add_argument('--learn_lr', type=float, default=1e-3,
                     help='learning rate of learning rate')
-parser.add_argument('--loss_weight_decay', type=float, default=0.1,
+parser.add_argument('--loss_weight_decay', type=float, default=0,
                     help='loss layer weight decay')
 parser.add_argument('--num_train_iterations', type=int, default=2000,
                     help='number of outer-loop updates to train for')
 
 
 # lstm model
-parser.add_argument('--lstm_hidden', type=int, default=64,
+parser.add_argument('--lstm_hidden', type=int, default=32,
                     help='the number of lstm hidden state dimension')
 parser.add_argument('--lstm_num_layers', type=int, default=1,
                     help='the number of lstm layers')
@@ -153,7 +153,9 @@ parser.add_argument('--pretraining_lr', type=float, default=1e-3,
                     help='learning rate during pretraining')
 parser.add_argument('--load_pretrained_embedding', type=boolean_string, default=False,
                     help='load pretrained embeddding or not')
-parser.add_argument('--save_embedding', type=boolean_string, default=False,
+parser.add_argument('--load_pretrained', type=boolean_string, default=False,
+                    help='load pretrained  or not')
+parser.add_argument('--save_pretrained', type=boolean_string, default=False,
                     help='save embedding or whole model')
 parser.add_argument('--pretrain_log_dir', type=str, default='./log_pretrained',
                     help='directory to save to or load from pretrained')
