@@ -20,6 +20,7 @@ class DataLoader():
             data_path : path of file containing target data
             max_sequence_length : maximum sequence length to sample
             min_sequence : minimum sequence used to filter users
+            min_item : minimum item size used to filter items
             min_sub_window_size : minimum window size during subsampling
             samples_per_task : number of subsamples for each user
             num_test_data : the number of test data
@@ -40,7 +41,7 @@ class DataLoader():
         self.num_query_set = args.num_query_set
 
         self.df, self.umap, self.smap = self.preprocessing(
-            args.data_path, args.min_sequence, args.mode)
+            args.data_path, args.min_sequence, args.min_item, args.mode)
         self.num_samples = args.num_samples
         self.train_set, self.valid_set, self.test_set = self.split_data(
             self.df, args.num_test_data)
@@ -67,7 +68,7 @@ class DataLoader():
             self.pretraining_test_loader = self.make_pretraining_dataloader(
                 self.test_set, args.pretraining_batch_size, num_queries=args.num_query_set)
 
-    def preprocessing(self, data_path, min_sequence, mode="ml-1m"):
+    def preprocessing(self, data_path, min_sequence, min_item, mode="ml-1m"):
         '''
         Preprocessing data
         return data with user - sequence pairs
@@ -75,6 +76,7 @@ class DataLoader():
         Args:
             data_path : path of file containing target data
             min_sequence : minimum sequence used to filter users
+            min_item : minimum item size used to filter items
             mode : "amazon" or "ml-1m"
 
         return:
@@ -95,7 +97,7 @@ class DataLoader():
             raw_df.rename(columns={'reviewerID': 'user_id'}, inplace=True)
 
         # filter user with lack of reviews
-        raw_df = self.filter_triplets(raw_df, min_sequence)
+        raw_df = self.filter_triplets(raw_df, min_sequence, min_item)
 
         # map user or product id => int
         raw_df, umap, smap = self.densify_index(raw_df)
@@ -148,17 +150,18 @@ class DataLoader():
     def get_url(self):
         return "http://files.grouplens.org/datasets/movielens/ml-1m.zip"
 
-    def filter_triplets(self, df, min_sequence):
+    def filter_triplets(self, df, min_sequence, min_item):
         '''
         filter user with lack of reviews
         Args:
             df: input data
             min_sequence: minimum reviews users should have
+            min_item: minimum reviews items should have
         return:
             df : filtered data
         '''
         item_sizes = df.groupby('product_id').size()
-        good_items = item_sizes.index[item_sizes >= 2]
+        good_items = item_sizes.index[item_sizes >= min_item]
         df = df[df['product_id'].isin(good_items)]
 
         user_sizes = df.groupby('user_id').size()
@@ -270,7 +273,7 @@ class DataLoader():
             target_idx : target product(rating) index
 
         process:
-            cut sequences -> get query -> subsample support 
+            cut sequences -> get query -> subsample support
         '''
         ratings, product_ids = self.get_sliced_sequences(product_ids, ratings)
 
