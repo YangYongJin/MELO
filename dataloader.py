@@ -256,15 +256,24 @@ class DataLoader():
         return sequences[rand_idxs]
 
     def make_query_seq(self, ratings, product_ids):
-        start_idx = np.random.randint(0, len(ratings)-2)
-        ratings_adapt = ratings[start_idx:]
-        product_ids_adapt = product_ids[start_idx:]
-        query_ratings = [0] * (self.max_sequence_length -
-                               len(ratings_adapt)) + ratings_adapt
-        query_product_ids = [0] * (self.max_sequence_length -
-                                   len(product_ids_adapt)) + product_ids_adapt
-        query_ratings = torch.FloatTensor(query_ratings).view(1, -1)
-        query_product_ids = torch.LongTensor(query_product_ids).view(1, -1)
+        query_ratings = []
+        query_product_ids = []
+        start_idxs = np.random.choice(
+            len(ratings)-2, self.num_query_set, replace=False)
+        for start_idx in start_idxs:
+            ratings_adapt = ratings[start_idx:]
+            product_ids_adapt = product_ids[start_idx:]
+            query_rating = [0] * (self.max_sequence_length -
+                                  len(ratings_adapt)) + ratings_adapt
+            query_product_id = [0] * (self.max_sequence_length -
+                                      len(product_ids_adapt)) + product_ids_adapt
+            query_rating = torch.FloatTensor(query_rating)
+            query_product_id = torch.LongTensor(query_product_id)
+
+            query_ratings.append(query_rating)
+            query_product_ids.append(query_product_id)
+        query_ratings = torch.stack(query_ratings)
+        query_product_ids = torch.stack(query_product_ids)
         return query_ratings, query_product_ids
 
     def preprocess_wt_subsampling(self, product_ids, ratings):
