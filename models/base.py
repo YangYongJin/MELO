@@ -175,7 +175,7 @@ class MetaBERTEmbedding(nn.Module):
 
         target_info = self.embedding(
             target_product_id, params=embedding_params).view(B, 1, -1)
-        x = x*product_history_ratings.view(B, T, 1)
+        # x = x*product_history_ratings.view(B, T, 1)
         x = torch.cat([x, target_info], dim=1)
         return self.dropout(x)
 

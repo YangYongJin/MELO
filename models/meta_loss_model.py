@@ -46,14 +46,17 @@ class MetaTaskLstmNetwork(nn.Module):
         super().__init__()
         if lstm_out is None:
             lstm_out = lstm_hidden
-
+        self.embedding = nn.Embedding(7, input_size)
         self.h0 = nn.Parameter(torch.randn(num_lstm_layers,  lstm_out))
         self.c0 = nn.Parameter(torch.randn(num_lstm_layers,  lstm_hidden))
         self.lstm = nn.LSTM(
             batch_first=True, input_size=input_size, hidden_size=lstm_hidden, num_layers=num_lstm_layers, proj_size=lstm_out)
 
     def forward(self, x):
+        x = x.long()
+        x = self.embedding(x).squeeze()
         b, t, _ = x.shape
         h0 = self.h0.repeat(b, 1, 1).permute(1, 0, 2)
         c0 = self.c0.repeat(b, 1, 1).permute(1, 0, 2)
+
         return self.lstm(x, (h0, c0))

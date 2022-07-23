@@ -61,7 +61,7 @@ parser.add_argument('--lstm_hidden', type=int, default=32,
                     help='the number of lstm hidden state dimension')
 parser.add_argument('--lstm_num_layers', type=int, default=1,
                     help='the number of lstm layers')
-parser.add_argument('--lstm_input_size', type=int, default=1,
+parser.add_argument('--lstm_input_size', type=int, default=32,
                     help='input dimension of lstm')
 
 # adaptive loss network
@@ -112,9 +112,9 @@ parser.add_argument('--batch_size', type=int, default=16,
                     help='batch size')
 parser.add_argument('--num_samples', type=int, default=64,
                     help='number of subsamples')
-parser.add_argument('--num_query_set', type=int, default=1,
+parser.add_argument('--num_query_set', type=int, default=8,
                     help='number of query samples')
-parser.add_argument('--default_rating', type=int, default=1,
+parser.add_argument('--default_rating', type=int, default=0,
                     help='rating value for padding')
 parser.add_argument('--min_sub_window_size', type=int, default=15,
                     help=('minimum sequence during subsampling'))

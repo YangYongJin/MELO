@@ -300,19 +300,22 @@ class MAML:
 
         # forward propagate on query data
         outputs = self.model(query_inputs, params=names_weights_copy)
-
+        gt = torch.cat(
+            (query_inputs[3], query_target_rating), dim=1)
+        mask = (gt != 0)
         # compute loss
         if self.normalize_loss:
-            query_loss = loss_fn(outputs, query_target_rating/5.0)
+            query_loss = loss_fn(outputs*mask, gt*mask/5.0)
             mae_loss = mae_loss_fn(
-                outputs.clone().detach()*5, query_target_rating)
+                outputs[:, -1:].clone().detach()*5, query_target_rating)
             query_out_loss = loss_fn(
-                outputs*5.0, query_target_rating).clone().detach().to("cpu")
+                outputs[:, -1:]*5.0, query_target_rating).clone().detach().to("cpu")
         else:
-            query_loss = loss_fn(outputs, query_target_rating)
+            query_loss = loss_fn(outputs*mask, gt*mask)
             mae_loss = mae_loss_fn(
-                outputs.clone().detach(), query_target_rating)
-            query_out_loss = query_loss.clone().detach().to("cpu")
+                outputs[:, -1:].clone().detach(), query_target_rating)
+            query_out_loss = loss_fn(
+                outputs[:, -1:], query_target_rating).clone().detach().to("cpu")
 
         query_loss = query_loss * imp_weight
 
@@ -331,7 +334,7 @@ class MAML:
 
         if self.use_lstm:
             task_input = torch.cat(
-                (inputs[3], target_rating), dim=1).reshape(-1, self.args.max_seq_len, 1)/5.0
+                (inputs[3], target_rating), dim=1).reshape(-1, self.args.max_seq_len, 1)
             b, t, _ = task_input.shape
 
             task_info, (h_out, c_out) = self.task_lstm_network(
@@ -377,7 +380,7 @@ class MAML:
         """
 
         # loss functions
-        loss_fn = nn.MSELoss(reduction='none')
+        loss_fn = nn.MSELoss()
         mae_loss_fn = nn.L1Loss()
 
         task_mse_losses = []
@@ -405,12 +408,14 @@ class MAML:
 
             # forward propagate on support set
             outputs = self.model(inputs, params=names_weights_copy)
-
+            gt = torch.cat(
+                (inputs[3], target_rating), dim=1)
+            mask = (gt != 0)
             # compute loss
             if self.normalize_loss:
-                loss = loss_fn(outputs, target_rating/5.0)
+                loss = loss_fn(outputs*mask, gt*mask/5.0)
             else:
-                loss = loss_fn(outputs, target_rating)
+                loss = loss_fn(outputs*mask, gt*mask)
 
             # adaptive loss
             if self.use_adaptive_loss:
