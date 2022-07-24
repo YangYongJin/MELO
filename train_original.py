@@ -212,14 +212,14 @@ class Pretrain:
         if self.args.save_pretrained:
             if self.args.model == 'sas4rec' or self.args.model == 'bert4rec':
                 torch.save(self.model.bert.bert_embedding.state_dict(),
-                           os.path.join(self._embedding_dir, f"{self.args.model}_embedding_{self.mode}_{self.bert_hidden}_{self.min_item}"))
+                           os.path.join(self._embedding_dir, f"{self.args.model}_embedding_{self.args.mode}_{self.args.bert_hidden}_{self.args.min_item}"))
             else:
                 torch.save(self.model.embedding.state_dict(),
                            os.path.join(self._embedding_dir, f"{self.args.model}_embedding"))
 
             # Save a model to 'pretrained_dir'
             torch.save(self.model.state_dict(),
-                       os.path.join(self._pretrained_dir, f"{self.args.model}_pretrained_{self.mode}_{self.bert_hidden}_{self.min_item}"))
+                       os.path.join(self._pretrained_dir, f"{self.args.model}_pretrained_{self.args.mode}_{self.args.bert_hidden}_{self.args.min_item}"))
         else:
             # Save a model to 'save_dir'
             torch.save(self.model.state_dict(),

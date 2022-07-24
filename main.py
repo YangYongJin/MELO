@@ -710,7 +710,7 @@ class MAML:
 
         if self.args.model == 'sas4rec' or self.args.model == 'bert4rec':
             self.model.bert.bert_embedding.load_state_dict(torch.load(
-                os.path.join(self._embedding_dir, f"{self.args.model}_embedding_{self.mode}_{self.bert_hidden}_{self.min_item}"), map_location=map_location))
+                os.path.join(self._embedding_dir, f"{self.args.model}_embedding_{self.args.mode}_{self.args.bert_hidden}_{self.args.min_item}"), map_location=map_location))
             # for param in self.model.bert.bert_embedding.parameters():
             # param.requires_grad = False
         else:
@@ -726,7 +726,7 @@ class MAML:
             map_location = 'cpu'
 
         self.model.load_state_dict(torch.load(
-            os.path.join(self._pretrained_dir, f"{self.args.model}_pretrained_{self.mode}_{self.bert_hidden}_{self.min_item}"), map_location=map_location))
+            os.path.join(self._pretrained_dir, f"{self.args.model}_pretrained_{self.args.mode}_{self.args.bert_hidden}_{self.args.min_item}"), map_location=map_location))
 
 
 def main(args):
