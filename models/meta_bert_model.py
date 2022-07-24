@@ -207,13 +207,13 @@ class MetaBERT4Rec(nn.Module):
             bert_params = param_dict['bert']
             dim_reduct_params = param_dict['dim_reduct']
             out1_params = param_dict['out1']
-            out2_params = param_dict['out2']
+            # out2_params = param_dict['out2']
 
         else:
             bert_params = None
             dim_reduct_params = None
             out1_params = None
-            out2_params = None
+            # out2_params = None
 
         x = self.bert(inputs, params=bert_params)
         x = self.dim_reduct(x, params=dim_reduct_params)
