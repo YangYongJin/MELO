@@ -246,7 +246,7 @@ class MAML:
         print(total_norm)
 
         self.meta_optimizer.step()
-        # self.meta_lr_scheduler.step()
+        self.meta_lr_scheduler.step()
         if self.use_adaptive_loss:
             total_norm = 0.0
             for p in self.loss_network.parameters():
@@ -331,7 +331,7 @@ class MAML:
 
         if self.use_lstm:
             task_input = torch.cat(
-                (inputs[3], target_rating), dim=1).reshape(-1, self.args.max_seq_len, 1)/5.0
+                (inputs[3], target_rating), dim=1).reshape(-1, self.args.max_seq_len, 1)  # /5.0
             b, t, _ = task_input.shape
 
             task_info, (h_out, c_out) = self.task_lstm_network(
@@ -710,7 +710,7 @@ class MAML:
 
         if self.args.model == 'sas4rec' or self.args.model == 'bert4rec':
             self.model.bert.bert_embedding.load_state_dict(torch.load(
-                os.path.join(self._embedding_dir, f"{self.args.model}_embedding"), map_location=map_location))
+                os.path.join(self._embedding_dir, f"{self.args.model}_embedding_{self.mode}_{self.bert_hidden}_{self.min_item}"), map_location=map_location))
             # for param in self.model.bert.bert_embedding.parameters():
             # param.requires_grad = False
         else:
@@ -726,7 +726,7 @@ class MAML:
             map_location = 'cpu'
 
         self.model.load_state_dict(torch.load(
-            os.path.join(self._pretrained_dir, f"{self.args.model}_pretrained"), map_location=map_location))
+            os.path.join(self._pretrained_dir, f"{self.args.model}_pretrained_{self.mode}_{self.bert_hidden}_{self.min_item}"), map_location=map_location))
 
 
 def main(args):

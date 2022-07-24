@@ -26,21 +26,21 @@ parser.add_argument('--num_test_data', type=int, default=1000,
                     help='the number of test data')
 parser.add_argument('--min_sequence', type=int, default=5,
                     help='minimum number of reviews users should have')
-parser.add_argument('--min_item', type=int, default=5,
+parser.add_argument('--min_item', type=int, default=10,
                     help='minimum number of reviews items should have')
 parser.add_argument('--random_seed', type=int, default=222,
                     help=('test data random seed'))
 
 # hyperparmeters for training
-parser.add_argument('--num_inner_steps', type=int, default=5,
+parser.add_argument('--num_inner_steps', type=int, default=3,
                     help='number of inner-loop updates')
 parser.add_argument('--use_learnable_params', type=boolean_string, default=True,
                     help='use learnable params or not learnable params')
 parser.add_argument('--inner_lr', type=float, default=1e-3,
                     help='inner-loop learning rate initialization')
-parser.add_argument('--outer_lr', type=float, default=1e-4,
+parser.add_argument('--outer_lr', type=float, default=1e-3,
                     help='outer-loop bert learning rate')
-parser.add_argument('--min_outer_lr', type=float, default=1e-5,
+parser.add_argument('--min_outer_lr', type=float, default=1e-4,
                     help='min outer-loop bert learning rate')
 parser.add_argument('--loss_lr', type=float, default=1e-3,
                     help='outer-loop learning rate')
@@ -61,7 +61,7 @@ parser.add_argument('--lstm_hidden', type=int, default=32,
                     help='the number of lstm hidden state dimension')
 parser.add_argument('--lstm_num_layers', type=int, default=1,
                     help='the number of lstm layers')
-parser.add_argument('--lstm_input_size', type=int, default=1,
+parser.add_argument('--lstm_input_size', type=int, default=32,
                     help='input dimension of lstm')
 
 # adaptive loss network
@@ -80,7 +80,7 @@ parser.add_argument('--bert_num_blocks', type=int, default=1,
                     help='number of bert blocks')
 parser.add_argument('--bert_num_heads', type=int, default=4,
                     help='number of attention heads')
-parser.add_argument('--bert_hidden_units', type=int, default=128,
+parser.add_argument('--bert_hidden_units', type=int, default=32,
                     help='number of hidden units ')
 parser.add_argument('--bert_dropout', type=float, default=0.1,
                     help='dropout rate')
@@ -95,7 +95,7 @@ parser.add_argument('--narm_n_layers', type=int, default=2,
 parser.add_argument('--narm_embedding_dim', type=int, default=128,
                     help='narm embedding dimension')
 
-# narm model
+# gru4rec model
 parser.add_argument('--gru4rec_hidden_size', type=int, default=32,
                     help='gru4rec gru hidden size')
 parser.add_argument('--gru4rec_n_layers', type=int, default=4,

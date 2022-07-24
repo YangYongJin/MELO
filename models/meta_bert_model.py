@@ -195,9 +195,9 @@ class MetaBERT4Rec(nn.Module):
         super().__init__()
         self.args = args
         self.bert = MetaBERT(args)
-        self.dim_reduct = MetaLinearLayer(self.bert.hidden, 16)
-        self.out1 = MetaLinearLayer(16*(args.max_seq_len), 128)
-        self.out2 = MetaLinearLayer(128, 1)
+        self.dim_reduct = MetaLinearLayer(self.bert.hidden, 1)
+        self.out1 = MetaLinearLayer(1*(args.max_seq_len), 1)
+        # self.out2 = MetaLinearLayer(128, 1)
         self.relu = nn.ReLU()
 
     def forward(self, inputs, params=None):
@@ -219,10 +219,10 @@ class MetaBERT4Rec(nn.Module):
         x = self.dim_reduct(x, params=dim_reduct_params)
         b, t, d = x.shape
         x = x.view(b, -1)  # Batch size x (t*d)
-        x = self.relu(x)
+        # x = self.relu(x)
         x = self.out1(x, params=out1_params)
-        x = self.relu(x)
-        x = self.out2(x, params=out2_params)
+        # x = self.relu(x)
+        # x = self.out2(x, params=out2_params)
         return 0.1 + torch.sigmoid(x)
 
     def zero_grad(self, params=None):
