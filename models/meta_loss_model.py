@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
 
 
-def change_padding_pos(ratings):
+def change_padding_pos(ratings, device="cpu"):
     final_ratings = []
     lengths = []
     b, t = ratings.shape
@@ -14,8 +14,11 @@ def change_padding_pos(ratings):
         lengths.append(int((t-zero_len).to("cpu").item()))
         final_ratings.append(torch.LongTensor(
             list(rating[zero_len:].long())+zero_len*[0]))
-    final_ratings = torch.stack(final_ratings)
-    return final_ratings, lengths
+    final_ratings = torch.stack(final_ratings).to(device)
+    input_lengths = torch.LongTensor(lengths)
+    input_lengths, sorted_idx = input_lengths.sort(0, descending=True)
+    final_ratings = final_ratings[sorted_idx]
+    return final_ratings, input_lengths
 
 
 class MetaStepLossNetwork(nn.Module):
@@ -56,7 +59,7 @@ class MetaLossNetwork(nn.Module):
 
 
 class MetaTaskLstmNetwork(nn.Module):
-    def __init__(self, input_size, lstm_hidden, num_lstm_layers, lstm_out=None):
+    def __init__(self, input_size, lstm_hidden, num_lstm_layers, lstm_out=None, device="cpu"):
         super().__init__()
         if lstm_out is None:
             lstm_out = lstm_hidden
@@ -65,12 +68,16 @@ class MetaTaskLstmNetwork(nn.Module):
         self.c0 = nn.Parameter(torch.randn(num_lstm_layers,  lstm_hidden))
         self.lstm = nn.LSTM(
             batch_first=True, input_size=input_size, hidden_size=lstm_hidden, num_layers=num_lstm_layers, proj_size=lstm_out)
+        self.device = device
 
     def forward(self, x):
-        x, lengths = change_padding_pos(x)
+        x, lengths = change_padding_pos(x, self.device)
         x = self.embedding(x)
         b, t, _ = x.shape
         h0 = self.h0.repeat(b, 1, 1).permute(1, 0, 2)
         c0 = self.c0.repeat(b, 1, 1).permute(1, 0, 2)
+        embs = pack_padded_sequence(x, lengths, batch_first=True)
+        lstm_out, (hidden, c) = self.lstm(embs, (h0, c0))
+        lstm_out, lengths = pad_packed_sequence(lstm_out, batch_first=True)
 
-        return self.lstm(x, (h0, c0))
+        return hidden[-1]

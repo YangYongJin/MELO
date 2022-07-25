@@ -146,7 +146,7 @@ class MAML:
             if lstm_hidden < num_loss_dims:
                 lstm_hidden = num_loss_dims+1
             self.task_lstm_network = MetaTaskLstmNetwork(
-                input_size=args.lstm_input_size, lstm_hidden=lstm_hidden, num_lstm_layers=args.lstm_num_layers, lstm_out=num_loss_dims).to(self.device)
+                input_size=args.lstm_input_size, lstm_hidden=lstm_hidden, num_lstm_layers=args.lstm_num_layers, lstm_out=num_loss_dims, device=self.device).to(self.device)
             self.task_lstm_optimizer = optim.Adam(
                 self.task_lstm_network.parameters(), lr=self._lstm_lr)
 
@@ -337,9 +337,9 @@ class MAML:
             task_input = torch.cat(
                 (inputs[3], target_rating), dim=1)
 
-            task_info, (h_out, c_out) = self.task_lstm_network(
+            task_info = self.task_lstm_network(
                 task_input)
-            task_info = task_info[:, -1, :]
+            # task_info = task_info[:, -1, :]
             # task_info = loss * task_info
             task_info = task_info.mean(dim=0)
             # task_info_adapt = (task_info-task_info.mean(dim=1, keepdim=True)) / \
