@@ -2,6 +2,20 @@ import torch
 import torch.nn as nn
 import math
 import torch.nn.functional as F
+from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
+
+
+def change_padding_pos(ratings):
+    final_ratings = []
+    lengths = []
+    b, t = ratings.shape
+    for rating in ratings:
+        zero_len = (rating == 0).sum()
+        lengths.append(int((t-zero_len).to("cpu").item()))
+        final_ratings.append(torch.LongTensor(
+            list(rating[zero_len:].long())+zero_len*[0]))
+    final_ratings = torch.stack(final_ratings)
+    return final_ratings, lengths
 
 
 class MetaStepLossNetwork(nn.Module):
@@ -53,8 +67,8 @@ class MetaTaskLstmNetwork(nn.Module):
             batch_first=True, input_size=input_size, hidden_size=lstm_hidden, num_layers=num_lstm_layers, proj_size=lstm_out)
 
     def forward(self, x):
-        x = x.long()
-        x = self.embedding(x).squeeze()
+        x, lengths = change_padding_pos(x)
+        x = self.embedding(x)
         b, t, _ = x.shape
         h0 = self.h0.repeat(b, 1, 1).permute(1, 0, 2)
         c0 = self.c0.repeat(b, 1, 1).permute(1, 0, 2)

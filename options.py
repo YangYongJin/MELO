@@ -32,13 +32,13 @@ parser.add_argument('--random_seed', type=int, default=222,
                     help=('test data random seed'))
 
 # hyperparmeters for training
-parser.add_argument('--num_inner_steps', type=int, default=5,
+parser.add_argument('--num_inner_steps', type=int, default=3,
                     help='number of inner-loop updates')
 parser.add_argument('--use_learnable_params', type=boolean_string, default=True,
                     help='use learnable params or not learnable params')
 parser.add_argument('--inner_lr', type=float, default=1e-3,
                     help='inner-loop learning rate initialization')
-parser.add_argument('--outer_lr', type=float, default=1e-4,
+parser.add_argument('--outer_lr', type=float, default=1e-3,
                     help='outer-loop bert learning rate')
 parser.add_argument('--min_outer_lr', type=float, default=1e-5,
                     help='min outer-loop bert learning rate')
@@ -76,7 +76,7 @@ parser.add_argument('--model', type=str, default='bert4rec',
 # about transformer model
 parser.add_argument('--max_seq_len', type=int, default=30,
                     help='maximum sequence length')
-parser.add_argument('--bert_num_blocks', type=int, default=1,
+parser.add_argument('--bert_num_blocks', type=int, default=2,
                     help='number of bert blocks')
 parser.add_argument('--bert_num_heads', type=int, default=4,
                     help='number of attention heads')

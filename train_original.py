@@ -12,7 +12,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 SAVE_INTERVAL = 100
 LOG_INTERVAL = 1
-VAL_INTERVAL = 25
+VAL_INTERVAL = 1
 
 
 class Pretrain:
@@ -215,14 +215,14 @@ class Pretrain:
         if self.args.save_pretrained:
             if self.args.model == 'sas4rec' or self.args.model == 'bert4rec':
                 torch.save(self.model.bert.bert_embedding.state_dict(),
-                           os.path.join(self._embedding_dir, f"{self.args.model}_embedding"))
+                           os.path.join(self._embedding_dir, f"{self.args.model}_embedding_{self.args.bert_hidden_units}_{self.args.bert_num_blocks}_{self.args.bert_num_heads}"))
             else:
                 torch.save(self.model.embedding.state_dict(),
                            os.path.join(self._embedding_dir, f"{self.args.model}_embedding"))
 
             # Save a model to 'pretrained_dir'
             torch.save(self.model.state_dict(),
-                       os.path.join(self._pretrained_dir, f"{self.args.model}_pretrained"))
+                       os.path.join(self._pretrained_dir, f"{self.args.model}_pretrained_{self.args.bert_hidden_units}_{self.args.bert_num_blocks}_{self.args.bert_num_heads}"))
         else:
             # Save a model to 'save_dir'
             torch.save(self.model.state_dict(),
