@@ -529,7 +529,7 @@ class MAML:
 
         # set validation tasks
         val_batches = self.dataloader.generate_task(
-            mode="valid", batch_size=600, normalized=self.normalize_loss, use_label=self.args.use_label)
+            mode="valid", batch_size=len(self.dataloader.valid_set), normalized=self.normalize_loss, use_label=self.args.use_label)
 
         # iteration
         for i in range(1, train_steps+1):
@@ -662,7 +662,7 @@ class MAML:
             load meta paramters
         '''
         target_path = os.path.join(
-            self._save_dir, f"{self.args.model}_{checkpoint_step}_best.pt")
+            self._save_dir, f"{self.args.model}_{checkpoint_step}_best_{self.args.mode}_{self.args.model}.pt")
         print("Loading checkpoint from", target_path)
         try:
             if torch.cuda.is_available():
@@ -693,7 +693,7 @@ class MAML:
             save meta paramters
         '''
         save_path = os.path.join(
-            self._save_dir, f"{self.args.model}_{self._train_step}_best.pt")
+            self._save_dir, f"{self.args.model}_{checkpoint_step}_best_{self.args.mode}_{self.args.model}.pt")
         model_dict = {
             'meta_model': self.model.state_dict()
         }
