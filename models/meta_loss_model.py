@@ -72,6 +72,7 @@ class MetaTaskLstmNetwork(nn.Module):
 
     def forward(self, x):
         # x, lengths = change_padding_pos(x, self.device)
+        x = x.long()
         x = self.embedding(x)
         b, t, _ = x.shape
         h0 = self.h0.repeat(b, 1, 1).permute(1, 0, 2)

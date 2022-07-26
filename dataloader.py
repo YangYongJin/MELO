@@ -260,9 +260,11 @@ class DataLoader():
         query_product_ids = []
         num_query = self.num_query_set if self.num_query_set <= (
             len(ratings)-2) else (len(ratings)-2)
-        start_idxs = np.random.choice(
-            len(ratings)-2, num_query, replace=False)
-        for start_idx in start_idxs:
+
+        for _ in range(num_query):
+            seq_len = np.random.randint(
+                self.min_sub_window_size, len(ratings)+1)
+            start_idx = len(ratings)-seq_len
             ratings_adapt = ratings[start_idx:]
             product_ids_adapt = product_ids[start_idx:]
             query_rating = [0] * (self.max_sequence_length -
