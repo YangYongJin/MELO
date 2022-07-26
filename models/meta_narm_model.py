@@ -80,9 +80,11 @@ class MetaNARM(nn.Module):
 
         # c_t = torch.cat([c_local, c_global], 1)
         # print(c_t.shape)
-        # c_t = self.ct_dropout(c_t)
+        c_t = c_global.unsqueeze(1)*c_local
 
-        out = self.out_layer(c_local, params=out_params)
+        c_t = self.ct_dropout(c_t)
+
+        out = self.out_layer(c_t, params=out_params)
 
         b, t, d = out.shape
         out = out.view(b, -1)

@@ -54,7 +54,7 @@ class MetaGRU4REC(nn.Module):
 
         # out = gru_out[:, -1, :]
 
-        out = self.relu(out)
+        out = self.relu(gru_out)
 
         out = self.out_layer(out, params=out_params)
 
