@@ -258,8 +258,10 @@ class DataLoader():
     def make_query_seq(self, ratings, product_ids):
         query_ratings = []
         query_product_ids = []
+        num_query = self.num_query_set if self.num_query_set <= (
+            len(ratings)-2) else (len(ratings)-2)
         start_idxs = np.random.choice(
-            len(ratings)-2, self.num_query_set, replace=False)
+            len(ratings)-2, num_query, replace=False)
         for start_idx in start_idxs:
             ratings_adapt = ratings[start_idx:]
             product_ids_adapt = product_ids[start_idx:]

@@ -354,10 +354,10 @@ class MAML:
                 (task_info.std() + 1e-12)
             if self.use_adaptive_loss_weight:
                 weight = self.task_info_network(task_info_adapt)[0]
-                loss += (weight *
-                         self.loss_network(support_task_state_adapt, step)).squeeze()
+                loss = (weight *
+                        self.loss_network(support_task_state_adapt, step)).squeeze()
             else:
-                loss += self.loss_network(
+                loss = self.loss_network(
                     support_task_state_adapt.reshape(1, -1), step).squeeze()
 
         return loss
