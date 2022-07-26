@@ -32,6 +32,7 @@ class MetaNARM(nn.Module):
         self.a_2 = MetaLinearLayer(
             self.hidden_size, self.hidden_size, use_bias=False)
         self.v_t = MetaLinearLayer(self.hidden_size, 1, use_bias=False)
+        self.ct_dropout = nn.Dropout(dropout)
 
         self.out_layer = MetaLinearLayer(self.hidden_size, 1, use_bias=True)
 

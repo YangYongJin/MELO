@@ -92,7 +92,7 @@ parser.add_argument('--narm_hidden_size', type=int, default=32,
                     help='narm gru hidden size')
 parser.add_argument('--narm_n_layers', type=int, default=1,
                     help='narm gru num layers')
-parser.add_argument('--narm_embedding_dim', type=int, default=32,
+parser.add_argument('--narm_embedding_dim', type=int, default=64,
                     help='narm embedding dimension')
 
 # narm model
@@ -100,7 +100,7 @@ parser.add_argument('--gru4rec_hidden_size', type=int, default=32,
                     help='gru4rec gru hidden size')
 parser.add_argument('--gru4rec_n_layers', type=int, default=2,
                     help='gru4rec gru num layers')
-parser.add_argument('--gru4rec_embedding_dim', type=int, default=32,
+parser.add_argument('--gru4rec_embedding_dim', type=int, default=64,
                     help='gru4rec embedding dimension')
 
 # dataloader parameters
