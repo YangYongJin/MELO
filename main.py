@@ -693,7 +693,7 @@ class MAML:
             save meta paramters
         '''
         save_path = os.path.join(
-            self._save_dir, f"{self.args.model}_{checkpoint_step}_best_{self.args.mode}_{self.args.model}.pt")
+            self._save_dir, f"{self.args.model}_{self._train_step}_best_{self.args.mode}_{self.args.model}.pt")
         model_dict = {
             'meta_model': self.model.state_dict()
         }
