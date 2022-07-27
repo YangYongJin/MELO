@@ -530,9 +530,10 @@ class MAML:
         # set validation tasks
         val_batches = self.dataloader.generate_task(
             mode="valid", batch_size=len(self.dataloader.valid_set), normalized=self.normalize_loss, use_label=self.args.use_label)
+        start_it = self._train_step+1
 
         # iteration
-        for i in range(1, train_steps+1):
+        for i in range(start_it, train_steps+1):
             self._train_step += 1
 
             # generate train task batch
