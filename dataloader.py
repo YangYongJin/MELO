@@ -101,6 +101,7 @@ class DataLoader():
                 'stars', 'user_id', 'business_id', 'timestamp'])
             raw_df.rename(columns={'business_id': 'product_id'}, inplace=True)
             raw_df.rename(columns={'timestamp': 'date'}, inplace=True)
+            raw_df.rename(columns={'stars': 'rating'}, inplace=True)
 
         # filter user with lack of reviews
         raw_df = self.filter_triplets(raw_df, min_sequence, min_item)
