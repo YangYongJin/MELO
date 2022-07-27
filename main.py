@@ -19,7 +19,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 # SAVE_INTERVAL = 50
 LOG_INTERVAL = 1
-VAL_INTERVAL = 50
+VAL_INTERVAL = 1
 
 
 class MAML:

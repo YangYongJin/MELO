@@ -224,7 +224,7 @@ class DataLoader():
         else:
             return values[rand_idx: rand_idx+self.max_sequence_length]
 
-    def get_sliced_sequences(self, product_ids, ratings):
+    def get_sliced_sequences(self, product_ids, ratings, mode):
         '''
             cut product_ids and ratings
         '''
@@ -232,6 +232,8 @@ class DataLoader():
             product_ids) < self.max_sequence_length else self.max_sequence_length
         rand_idx = np.random.randint(
             len(product_ids) + 1 - cut_num)
+        if mode is not 'train':
+            rand_idx = len(product_ids) - cut_num
         ratings = self.cut_sequences(ratings, rand_idx)
         product_ids = self.cut_sequences(product_ids, rand_idx)
         return ratings, product_ids
@@ -280,7 +282,7 @@ class DataLoader():
         query_product_ids = torch.stack(query_product_ids)
         return query_ratings, query_product_ids
 
-    def preprocess_wt_subsampling(self, product_ids, ratings):
+    def preprocess_wt_subsampling(self, product_ids, ratings, mode):
         '''
         subsampling geneartion pipieline function
         cut sequence => subsample => make torch tensor
@@ -296,7 +298,8 @@ class DataLoader():
         process:
             cut sequences -> get query -> subsample support
         '''
-        ratings, product_ids = self.get_sliced_sequences(product_ids, ratings)
+        ratings, product_ids = self.get_sliced_sequences(
+            product_ids, ratings, mode)
 
         query_ratings, query_product_ids = self.make_query_seq(
             ratings, product_ids)
@@ -450,7 +453,7 @@ class DataLoader():
 
             # subsamples
             support_ratings, support_product_ids, query_ratings, query_product_ids, normalized_num_samples = self.preprocess_wt_subsampling(
-                product_ids, ratings)
+                product_ids, ratings, mode)
 
             # make support set and query set
             support_data, rating_info = self.make_support_set(

@@ -57,11 +57,11 @@ parser.add_argument('--num_train_iterations', type=int, default=2000,
 
 
 # lstm model
-parser.add_argument('--lstm_hidden', type=int, default=16,
+parser.add_argument('--lstm_hidden', type=int, default=32,
                     help='the number of lstm hidden state dimension')
 parser.add_argument('--lstm_num_layers', type=int, default=1,
                     help='the number of lstm layers')
-parser.add_argument('--lstm_input_size', type=int, default=16,
+parser.add_argument('--lstm_input_size', type=int, default=32,
                     help='input dimension of lstm')
 
 # adaptive loss network
@@ -110,7 +110,7 @@ parser.add_argument('--num_items', type=int, default=0,
                     help='number of items')
 parser.add_argument('--batch_size', type=int, default=16,
                     help='batch size')
-parser.add_argument('--val_size', type=int, default=1000,
+parser.add_argument('--val_size', type=int, default=500,
                     help='val batch size')
 parser.add_argument('--num_samples', type=int, default=64,
                     help='number of subsamples')
