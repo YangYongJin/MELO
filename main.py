@@ -146,7 +146,7 @@ class MAML:
             if lstm_hidden < num_loss_dims:
                 lstm_hidden = num_loss_dims+1
             self.task_lstm_network = MetaTaskLstmNetwork(
-                input_size=args.lstm_input_size, lstm_hidden=lstm_hidden, num_lstm_layers=args.lstm_num_layers, lstm_out=num_loss_dims, device=self.device).to(self.device)
+                input_size=args.lstm_input_size, lstm_hidden=lstm_hidden, num_lstm_layers=args.lstm_num_layers, lstm_out=args.max_seq_len, device=self.device).to(self.device)
             self.task_lstm_optimizer = optim.Adam(
                 self.task_lstm_network.parameters(), lr=self._lstm_lr)
 
@@ -249,13 +249,13 @@ class MAML:
         self.meta_optimizer.step()
         self.meta_lr_scheduler.step()
         if self.use_adaptive_loss:
-            total_norm = 0.0
-            for p in self.loss_network.parameters():
-                if p.requires_grad:
-                    param_norm = p.grad.detach().data.norm(2)
-                    total_norm += param_norm.item() ** 2
-            total_norm = total_norm ** 0.5
-            print(total_norm)
+            # total_norm = 0.0
+            # for p in self.loss_network.parameters():
+            #     if p.requires_grad:
+            #         param_norm = p.grad.detach().data.norm(2)
+            #         total_norm += param_norm.item() ** 2
+            # total_norm = total_norm ** 0.5
+            # print(total_norm)
 
             self.loss_optimizer.step()
             # self.loss_lr_scheduler.step()
@@ -335,16 +335,17 @@ class MAML:
 
         if self.use_lstm:
             task_input = torch.cat(
-                (inputs[3], target_rating), dim=1).reshape(-1, self.args.max_seq_len, 1)  # /5.0
+                (inputs[3], target_rating), dim=1)  # /5.0
             task_info = self.task_lstm_network(
                 task_input)
             # task_info = task_info[:, -1, :]
-            # task_info = loss * task_info
-            task_info = task_info.mean(dim=0)
+            adapt_loss = loss * task_info
+            loss = adapt_loss.sum()/torch.count_nonzero(adapt_loss)
+            # task_info = task_info.mean(dim=0)
             # task_info_adapt = (task_info-task_info.mean(dim=1, keepdim=True)) / \
             #     (task_info.std(dim=1, keepdim=True) + 1e-5)
-            task_adapt = task_info * support_task_state_adapt
-            loss = self.loss_network(task_adapt, step).squeeze()
+            # task_adapt = task_info * support_task_state_adapt
+            # loss = self.loss_network(task_adapt, step).squeeze()
             # loss = torch.mean(loss)
 
         else:
@@ -412,9 +413,9 @@ class MAML:
             mask = (gt != 0)
             # compute loss
             if self.normalize_loss:
-                loss = loss_fn(outputs*mask, gt*mask/5.0).sum()/mask.sum()
+                loss = loss_fn(outputs*mask, gt*mask/5.0)  # .sum()/mask.sum()
             else:
-                loss = loss_fn(outputs*mask, gt*mask).sum()/mask.sum()
+                loss = loss_fn(outputs*mask, gt*mask)  # .sum()/mask.sum()
 
             # adaptive loss
             if self.use_adaptive_loss:

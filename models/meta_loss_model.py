@@ -71,15 +71,6 @@ class MetaTaskLstmNetwork(nn.Module):
         self.device = device
 
     def forward(self, x):
-<<<<<<< HEAD
-        x = x.long()
-        x = self.embedding(x).squeeze()
-        b, t, _ = x.shape
-        h0 = self.h0.repeat(b, 1, 1).permute(1, 0, 2)
-        c0 = self.c0.repeat(b, 1, 1).permute(1, 0, 2)
-
-        return self.lstm(x, (h0, c0))
-=======
         # x, lengths = change_padding_pos(x, self.device)
         x = x.long()
         x = self.embedding(x)
@@ -91,4 +82,3 @@ class MetaTaskLstmNetwork(nn.Module):
         # lstm_out, lengths = pad_packed_sequence(lstm_out, batch_first=True)
 
         return hidden[-1]
->>>>>>> yjtest
