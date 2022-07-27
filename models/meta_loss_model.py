@@ -81,4 +81,4 @@ class MetaTaskLstmNetwork(nn.Module):
         lstm_out, (hidden, c) = self.lstm(x, (h0, c0))
         # lstm_out, lengths = pad_packed_sequence(lstm_out, batch_first=True)
 
-        return hidden[-1]
+        return lstm_out
