@@ -59,16 +59,19 @@ class MetaLossNetwork(nn.Module):
 
 
 class MetaTaskLstmNetwork(nn.Module):
-    def __init__(self, input_size, lstm_hidden, num_lstm_layers, lstm_out=None, device="cpu"):
+    def __init__(self, input_size, lstm_hidden, num_lstm_layers, lstm_out=0, device="cpu"):
         super().__init__()
-        if lstm_out is None:
-            lstm_out = lstm_hidden
+        if lstm_out == 0:
+            lstm_out_size = lstm_hidden
+        else:
+            lstm_out_size = lstm_out
         self.embedding = nn.Embedding(7, input_size)
-        self.h0 = nn.Parameter(torch.randn(num_lstm_layers,  lstm_out))
+        self.h0 = nn.Parameter(torch.randn(num_lstm_layers,  lstm_out_size))
         self.c0 = nn.Parameter(torch.randn(num_lstm_layers,  lstm_hidden))
         self.lstm = nn.LSTM(
             batch_first=True, input_size=input_size, hidden_size=lstm_hidden, num_layers=num_lstm_layers, proj_size=lstm_out)
         self.device = device
+        self.out_net = nn.Linear(lstm_out_size, 1)
 
     def forward(self, x):
         # x, lengths = change_padding_pos(x, self.device)
@@ -81,4 +84,4 @@ class MetaTaskLstmNetwork(nn.Module):
         lstm_out, (hidden, c) = self.lstm(x, (h0, c0))
         # lstm_out, lengths = pad_packed_sequence(lstm_out, batch_first=True)
 
-        return lstm_out
+        return self.out_net(lstm_out).squeeze()

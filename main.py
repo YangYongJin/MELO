@@ -27,6 +27,7 @@ class MAML:
 
         self.args = args
         self.batch_size = args.batch_size  # task batch size
+        self.val_size = args.val_size  # task batch size
 
         # load dataloader
         self.dataloader = DataLoader(args, pretraining=False)
@@ -146,7 +147,7 @@ class MAML:
             if lstm_hidden < num_loss_dims:
                 lstm_hidden = num_loss_dims+1
             self.task_lstm_network = MetaTaskLstmNetwork(
-                input_size=args.lstm_input_size, lstm_hidden=lstm_hidden, num_lstm_layers=args.lstm_num_layers, lstm_out=1, device=self.device).to(self.device)
+                input_size=args.lstm_input_size, lstm_hidden=lstm_hidden, num_lstm_layers=args.lstm_num_layers, lstm_out=0, device=self.device).to(self.device)
             self.task_lstm_optimizer = optim.Adam(
                 self.task_lstm_network.parameters(), lr=self._lstm_lr)
 
@@ -529,7 +530,7 @@ class MAML:
 
         # set validation tasks
         val_batches = self.dataloader.generate_task(
-            mode="valid", batch_size=600, normalized=self.normalize_loss, use_label=self.args.use_label)
+            mode="valid", batch_size=self.val_size, normalized=self.normalize_loss, use_label=self.args.use_label)
         start_point = self._train_step+1
         # iteration
         for i in range(start_point, train_steps+1):
