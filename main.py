@@ -19,7 +19,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 # SAVE_INTERVAL = 50
 LOG_INTERVAL = 1
-VAL_INTERVAL = 1
+VAL_INTERVAL = 50
 
 
 class MAML:
@@ -28,6 +28,8 @@ class MAML:
         self.args = args
         self.batch_size = args.batch_size  # task batch size
         self.val_size = args.val_size  # task batch size
+
+        self.val_log_interval = args.log_interval
 
         # load dataloader
         self.dataloader = DataLoader(args, pretraining=False)
@@ -424,7 +426,7 @@ class MAML:
                     loss, names_weights_copy, inputs, target_rating, step, task_info)
 
             else:
-                loss = torch.mean(loss)
+                loss = loss.sum()/mask.sum()
 
             # update inner loop paramters phi
             names_weights_copy = self.apply_inner_loop_update(
@@ -558,7 +560,7 @@ class MAML:
                 writer.add_scalar("train/MAEloss", mae_loss, self._train_step)
 
             # evaluate validation set
-            if i % VAL_INTERVAL == 0:
+            if i % self.val_log_interval == 0:
                 val_mse_losses = []
                 val_mae_losses = []
                 for j in range(math.ceil(len(val_batches)/self.batch_size)):
