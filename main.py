@@ -1,3 +1,4 @@
+from multiprocessing import reduction
 from models import model_factory
 from models.meta_loss_model import MetaLossNetwork, MetaTaskLstmNetwork
 from inner_loop_optimizers import LSLRGradientDescentLearningRule
@@ -145,7 +146,7 @@ class MAML:
             if lstm_hidden < num_loss_dims:
                 lstm_hidden = num_loss_dims+1
             self.task_lstm_network = MetaTaskLstmNetwork(
-                input_size=args.lstm_input_size, lstm_hidden=lstm_hidden, num_lstm_layers=args.lstm_num_layers, lstm_out=num_loss_dims).to(self.device)
+                input_size=args.lstm_input_size, lstm_hidden=lstm_hidden, num_lstm_layers=args.lstm_num_layers, lstm_out=num_loss_dims, device=self.device).to(self.device)
             self.task_lstm_optimizer = optim.Adam(
                 self.task_lstm_network.parameters(), lr=self._lstm_lr)
 
@@ -296,23 +297,26 @@ class MAML:
             imp_weight : importance weight vector for gradients(multi step)
         '''
         # zero grad
-        loss_fn = nn.MSELoss()
+        loss_fn = nn.MSELoss(reduction='none')
 
         # forward propagate on query data
         outputs = self.model(query_inputs, params=names_weights_copy)
-
+        gt = torch.cat(
+            (query_inputs[3], query_target_rating), dim=1)
+        mask = (gt != 0)
         # compute loss
         if self.normalize_loss:
-            query_loss = loss_fn(outputs, query_target_rating/5.0)
+            query_loss = loss_fn(outputs*mask, gt*mask/5.0).sum()/mask.sum()
             mae_loss = mae_loss_fn(
-                outputs.clone().detach()*5, query_target_rating)
-            query_out_loss = loss_fn(
-                outputs*5.0, query_target_rating).clone().detach().to("cpu")
+                outputs[:, -1:].clone().detach()*5, query_target_rating)
+            query_out_loss = torch.mean(loss_fn(
+                outputs[:, -1:]*5.0, query_target_rating)).clone().detach().to("cpu")
         else:
-            query_loss = loss_fn(outputs, query_target_rating)
+            query_loss = loss_fn(outputs*mask, gt*mask).sum()/mask.sum()
             mae_loss = mae_loss_fn(
-                outputs.clone().detach(), query_target_rating)
-            query_out_loss = query_loss.clone().detach().to("cpu")
+                outputs[:, -1:].clone().detach(), query_target_rating)
+            query_out_loss = torch.mean(loss_fn(
+                outputs[:, -1:], query_target_rating)).clone().detach().to("cpu")
 
         query_loss = query_loss * imp_weight
 
@@ -332,16 +336,14 @@ class MAML:
         if self.use_lstm:
             task_input = torch.cat(
                 (inputs[3], target_rating), dim=1).reshape(-1, self.args.max_seq_len, 1)  # /5.0
-            b, t, _ = task_input.shape
-
-            task_info, (h_out, c_out) = self.task_lstm_network(
+            task_info = self.task_lstm_network(
                 task_input)
-            task_info = task_info[:, -1, :]
+            # task_info = task_info[:, -1, :]
             # task_info = loss * task_info
             task_info = task_info.mean(dim=0)
             # task_info_adapt = (task_info-task_info.mean(dim=1, keepdim=True)) / \
             #     (task_info.std(dim=1, keepdim=True) + 1e-5)
-            task_adapt = task_info * support_task_state
+            task_adapt = task_info * support_task_state_adapt
             loss = self.loss_network(task_adapt, step).squeeze()
             # loss = torch.mean(loss)
 
@@ -351,10 +353,10 @@ class MAML:
                 (task_info.std() + 1e-12)
             if self.use_adaptive_loss_weight:
                 weight = self.task_info_network(task_info_adapt)[0]
-                loss += (weight *
-                         self.loss_network(support_task_state_adapt, step)).squeeze()
+                loss = (weight *
+                        self.loss_network(support_task_state_adapt, step)).squeeze()
             else:
-                loss += self.loss_network(
+                loss = self.loss_network(
                     support_task_state_adapt.reshape(1, -1), step).squeeze()
 
         return loss
@@ -405,12 +407,14 @@ class MAML:
 
             # forward propagate on support set
             outputs = self.model(inputs, params=names_weights_copy)
-
+            gt = torch.cat(
+                (inputs[3], target_rating), dim=1)
+            mask = (gt != 0)
             # compute loss
             if self.normalize_loss:
-                loss = loss_fn(outputs, target_rating/5.0)
+                loss = loss_fn(outputs*mask, gt*mask/5.0).sum()/mask.sum()
             else:
-                loss = loss_fn(outputs, target_rating)
+                loss = loss_fn(outputs*mask, gt*mask).sum()/mask.sum()
 
             # adaptive loss
             if self.use_adaptive_loss:
@@ -657,7 +661,7 @@ class MAML:
             load meta paramters
         '''
         target_path = os.path.join(
-            self._save_dir, f"{self.args.model}_{checkpoint_step}_best.pt")
+            self._save_dir, f"{self.args.model}_{checkpoint_step}_best_{self.args.mode}_{self.args.model}.pt")
         print("Loading checkpoint from", target_path)
         try:
             if torch.cuda.is_available():
@@ -688,7 +692,7 @@ class MAML:
             save meta paramters
         '''
         save_path = os.path.join(
-            self._save_dir, f"{self.args.model}_{self._train_step}_best.pt")
+            self._save_dir, f"{self.args.model}_{self._train_step}_best_{self.args.mode}_{self.args.model}.pt")
         model_dict = {
             'meta_model': self.model.state_dict()
         }
@@ -710,7 +714,7 @@ class MAML:
 
         if self.args.model == 'sas4rec' or self.args.model == 'bert4rec':
             self.model.bert.bert_embedding.load_state_dict(torch.load(
-                os.path.join(self._embedding_dir, f"{self.args.model}_embedding_{self.args.mode}_{self.args.bert_hidden_units}_{self.args.min_item}"), map_location=map_location))
+                os.path.join(self._embedding_dir, f"{self.args.model}_embedding_{self.args.mode}_{self.args.bert_hidden_units}_{self.args.bert_num_blocks}_{self.args.bert_num_heads}"), map_location=map_location))
             # for param in self.model.bert.bert_embedding.parameters():
             # param.requires_grad = False
         else:
@@ -726,7 +730,7 @@ class MAML:
             map_location = 'cpu'
 
         self.model.load_state_dict(torch.load(
-            os.path.join(self._pretrained_dir, f"{self.args.model}_pretrained_{self.args.mode}_{self.args.bert_hidden_units}_{self.args.min_item}"), map_location=map_location))
+            os.path.join(self._pretrained_dir, f"{self.args.model}_pretrained_{self.args.mode}{self.args.bert_hidden_units}_{self.args.bert_num_blocks}_{self.args.bert_num_heads}"), map_location=map_location))
 
 
 def main(args):

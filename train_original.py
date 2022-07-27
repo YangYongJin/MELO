@@ -12,7 +12,7 @@ from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 SAVE_INTERVAL = 100
 LOG_INTERVAL = 1
-VAL_INTERVAL = 25
+VAL_INTERVAL = 1
 
 
 class Pretrain:
@@ -95,21 +95,24 @@ class Pretrain:
             # forward prop
             outputs = self.model(
                 x_inputs)
+            gt = torch.cat(
+                (x_inputs[3], target_rating), dim=1)
+            mask = (gt != 0)
 
             # compute loss
             if self.normalize_loss:
-                loss = self.loss_fn(outputs, target_rating/5.0)
+                loss = self.loss_fn(outputs*mask, gt*mask/5.0)
                 mse_loss = self.loss_fn(
-                    outputs.clone().detach()*5, target_rating)
+                    outputs[:, -1:].clone().detach()*5, target_rating)
                 mae_loss = self.mae_loss_fn(
-                    outputs.clone().detach()*5, target_rating)
+                    outputs[:, -1:].clone().detach()*5, target_rating)
                 rmse_loss = torch.sqrt(mse_loss)
             else:
-                loss = self.loss_fn(outputs, target_rating)
+                loss = self.loss_fn(outputs*mask, gt*mask)
                 mse_loss = self.loss_fn(
-                    outputs.clone().detach(), target_rating)
+                    outputs[:, -1:].clone().detach(), target_rating)
                 mae_loss = self.mae_loss_fn(
-                    outputs.clone().detach(), target_rating)
+                    outputs[:, -1:].clone().detach(), target_rating)
                 rmse_loss = torch.sqrt(mse_loss)
 
             # update paramters
@@ -212,14 +215,14 @@ class Pretrain:
         if self.args.save_pretrained:
             if self.args.model == 'sas4rec' or self.args.model == 'bert4rec':
                 torch.save(self.model.bert.bert_embedding.state_dict(),
-                           os.path.join(self._embedding_dir, f"{self.args.model}_embedding_{self.args.mode}_{self.args.bert_hidden_units}_{self.args.min_item}"))
+                           os.path.join(self._embedding_dir, f"{self.args.model}_embedding_{self.args.mode}_{self.args.bert_hidden_units}_{self.args.bert_num_blocks}_{self.args.bert_num_heads}"))
             else:
                 torch.save(self.model.embedding.state_dict(),
                            os.path.join(self._embedding_dir, f"{self.args.model}_embedding"))
 
             # Save a model to 'pretrained_dir'
             torch.save(self.model.state_dict(),
-                       os.path.join(self._pretrained_dir, f"{self.args.model}_pretrained_{self.args.mode}_{self.args.bert_hidden_units}_{self.args.min_item}"))
+                       os.path.join(self._pretrained_dir, f"{self.args.model}_pretrained_{self.args.mode}_{self.args.bert_hidden_units}_{self.args.bert_num_blocks}_{self.args.bert_num_heads}"))
         else:
             # Save a model to 'save_dir'
             torch.save(self.model.state_dict(),

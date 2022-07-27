@@ -33,7 +33,7 @@ class MetaGRU4REC(nn.Module):
             self.embedding_dim, self.hidden_size, self.n_layers, self.hidden_size)
         self.relu = nn.ReLU()
 
-        self.out = MetaLinearLayer(self.hidden_size, 1, use_bias=True)
+        self.out_layer = MetaLinearLayer(self.hidden_size, 1, use_bias=True)
 
     def forward(self, inputs, params=None):
 
@@ -42,7 +42,7 @@ class MetaGRU4REC(nn.Module):
             param_dict = extract_top_level_dict(current_dict=params)
             embedding_params = param_dict['embedding']
             gru_params = param_dict['gru']
-            out_params = param_dict['out']
+            out_params = param_dict['out_layer']
 
         else:
             embedding_params = None
@@ -52,11 +52,14 @@ class MetaGRU4REC(nn.Module):
         x = self.embedding(inputs, params=embedding_params)
         gru_out, h_n = self.gru(x, params=gru_params)
 
-        out = gru_out[:, -1, :]
+        # out = gru_out[:, -1, :]
 
-        out = self.relu(out)
+        out = self.relu(gru_out)
 
-        out = self.out(out, params=out_params)
+        out = self.out_layer(out, params=out_params)
+
+        b, t, d = out.shape
+        out = out.view(b, -1)
 
         return 0.1 + torch.sigmoid(out)
 

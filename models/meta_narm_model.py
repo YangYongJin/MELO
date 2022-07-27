@@ -32,8 +32,9 @@ class MetaNARM(nn.Module):
         self.a_2 = MetaLinearLayer(
             self.hidden_size, self.hidden_size, use_bias=False)
         self.v_t = MetaLinearLayer(self.hidden_size, 1, use_bias=False)
+        self.ct_dropout = nn.Dropout(dropout)
 
-        self.out = MetaLinearLayer(2*self.hidden_size, 1, use_bias=True)
+        self.out_layer = MetaLinearLayer(self.hidden_size, 1, use_bias=True)
 
     def forward(self, inputs, params=None):
 
@@ -45,7 +46,7 @@ class MetaNARM(nn.Module):
             a_1_params = param_dict['a_1']
             a_2_params = param_dict['a_2']
             v_t_params = param_dict['v_t']
-            out_params = param_dict['out']
+            out_params = param_dict['out_layer']
 
         else:
             embedding_params = None
@@ -69,20 +70,25 @@ class MetaNARM(nn.Module):
 
         mask = torch.where(torch.cat((inputs[1], inputs[2]), dim=1) > 0, torch.tensor(
             [1.], device=self.device), torch.tensor([0.], device=self.device))
+
         q2_expand = q2.unsqueeze(1).expand_as(q1)
 
         q2_masked = mask.unsqueeze(2).expand_as(q1) * q2_expand
 
         alpha = self.v_t(torch.sigmoid(q1 + q2_masked).view(-1,
                          self.hidden_size), params=v_t_params).view(mask.size())
-        c_local = torch.sum(alpha.unsqueeze(2).expand_as(gru_out) * gru_out, 1)
+        c_local = alpha.unsqueeze(2).expand_as(gru_out) * gru_out
 
-        # print(c_local.shape)
+        # c_t = torch.cat([c_local, c_global], 1)
+        # print(c_t.shape)
+        c_t = c_global.unsqueeze(1)*c_local
 
-        c_t = torch.cat([c_local, c_global], 1)
-        # c_t = self.ct_dropout(c_t)
+        c_t = self.ct_dropout(c_t)
 
-        out = self.out(c_t, params=out_params)
+        out = self.out_layer(c_t, params=out_params)
+
+        b, t, d = out.shape
+        out = out.view(b, -1)
 
         return 0.1 + torch.sigmoid(out)
 

@@ -76,7 +76,7 @@ parser.add_argument('--model', type=str, default='bert4rec',
 # about transformer model
 parser.add_argument('--max_seq_len', type=int, default=30,
                     help='maximum sequence length')
-parser.add_argument('--bert_num_blocks', type=int, default=1,
+parser.add_argument('--bert_num_blocks', type=int, default=2,
                     help='number of bert blocks')
 parser.add_argument('--bert_num_heads', type=int, default=4,
                     help='number of attention heads')
@@ -90,17 +90,17 @@ parser.add_argument('--model_init_seed', type=int, default=5,
 # narm model
 parser.add_argument('--narm_hidden_size', type=int, default=32,
                     help='narm gru hidden size')
-parser.add_argument('--narm_n_layers', type=int, default=2,
+parser.add_argument('--narm_n_layers', type=int, default=1,
                     help='narm gru num layers')
-parser.add_argument('--narm_embedding_dim', type=int, default=128,
+parser.add_argument('--narm_embedding_dim', type=int, default=64,
                     help='narm embedding dimension')
 
 # gru4rec model
 parser.add_argument('--gru4rec_hidden_size', type=int, default=32,
                     help='gru4rec gru hidden size')
-parser.add_argument('--gru4rec_n_layers', type=int, default=4,
+parser.add_argument('--gru4rec_n_layers', type=int, default=2,
                     help='gru4rec gru num layers')
-parser.add_argument('--gru4rec_embedding_dim', type=int, default=128,
+parser.add_argument('--gru4rec_embedding_dim', type=int, default=64,
                     help='gru4rec embedding dimension')
 
 # dataloader parameters
@@ -112,9 +112,9 @@ parser.add_argument('--batch_size', type=int, default=16,
                     help='batch size')
 parser.add_argument('--num_samples', type=int, default=64,
                     help='number of subsamples')
-parser.add_argument('--num_query_set', type=int, default=1,
+parser.add_argument('--num_query_set', type=int, default=8,
                     help='number of query samples')
-parser.add_argument('--default_rating', type=int, default=1,
+parser.add_argument('--default_rating', type=int, default=0,
                     help='rating value for padding')
 parser.add_argument('--min_sub_window_size', type=int, default=15,
                     help=('minimum sequence during subsampling'))
