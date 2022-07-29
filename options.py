@@ -132,9 +132,9 @@ parser.add_argument('--use_multi_step', type=boolean_string, default=True,
                     help='use multi step loss or not')
 parser.add_argument('--use_adaptive_loss', type=boolean_string, default=True,
                     help='use adaptive loss or pure maml')
-parser.add_argument('--use_adaptive_loss_weight', type=boolean_string, default=False,
+parser.add_argument('--use_adaptive_loss_weight', type=boolean_string, default=True,
                     help='use adaptive loss with weight')
-parser.add_argument('--use_lstm', type=boolean_string, default=True,
+parser.add_argument('--use_lstm', type=boolean_string, default=False,
                     help='use lstm for task information')
 parser.add_argument('--normalize_loss', type=boolean_string, default=True,
                     help='use normalized ratings')
