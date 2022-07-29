@@ -431,8 +431,15 @@ class DataLoader():
         else:
             rating_mean = rating_info.mean()
             rating_std = rating_info.std()
-        rating_info = self.task_info_rating_mean*[rating_mean] + self.task_info_rating_std*[rating_std] + self.task_info_rating_distribution * [
-            normalized_num_1, normalized_num_2, normalized_num_3, normalized_num_4, normalized_num_5]
+        # + self.task_info_rating_distribution #* [
+        rating_info = self.task_info_rating_mean * \
+            [rating_mean] + self.task_info_rating_std*[rating_std]
+        # normalized_num_1, normalized_num_2, normalized_num_3, normalized_num_4, normalized_num_5]
+        rating_info = torch.stack(rating_info)
+        rating_info = rating_info.repeat(
+            len(ratings), 1)
+        rating_info = torch.cat((rating_info, ratings/5.0), dim=1)
+
 
         return rating_info
 
@@ -490,8 +497,7 @@ class DataLoader():
                 user_id, query_product_ids, query_ratings)
 
             # make task information
-            task_info = torch.Tensor(
-                rating_info + self.task_info_num_samples*[normalized_num_samples])
+            task_info = rating_info
 
             tasks.append((support_data, query_data, task_info))
 

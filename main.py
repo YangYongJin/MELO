@@ -120,15 +120,12 @@ class MAML:
                 self._num_inner_steps, num_loss_dims, args.loss_num_layers).to(self.device)
             self.loss_optimizer = optim.Adam(
                 self.loss_network.parameters(), lr=self._loss_lr, weight_decay=args.loss_weight_decay)
-            self.loss_lr_scheduler = optim.lr_scheduler.\
-                MultiStepLR(self.loss_optimizer, milestones=[
-                            500, 800, 950], gamma=0.7)
+            self.loss_lr_scheduler = optim.lr_scheduler.CosineAnnealingLR(
+                self.loss_optimizer, T_max=args.num_train_iterations, eta_min=args.min_outer_lr)
 
          # settings for adaptive loss weight
         if self.use_adaptive_loss_weight:
-            num_loss_weight_dims = 1*args.task_info_rating_mean + 1 * \
-                args.task_info_rating_std + 1*args.task_info_num_samples + \
-                5*args.task_info_rating_distribution
+            num_loss_weight_dims = 4
             self._task_info_lr = args.task_info_lr
             self.task_info_network = nn.Sequential(
                 nn.Linear(num_loss_weight_dims,
@@ -138,9 +135,8 @@ class MAML:
             ).to(self.device)
             self.task_info_optimizer = optim.Adam(
                 self.task_info_network.parameters(), lr=self._task_info_lr)
-            self.task_info_lr_scheduler = optim.lr_scheduler.\
-                MultiStepLR(self.task_info_optimizer, milestones=[
-                            500, 800, 950], gamma=0.7)
+            self.task_info_lr_scheduler = optim.lr_scheduler.CosineAnnealingLR(
+                self.task_info_optimizer, T_max=args.num_train_iterations, eta_min=args.min_outer_lr)
 
         # use lstm as task information
         if self.use_lstm:
@@ -300,26 +296,24 @@ class MAML:
             imp_weight : importance weight vector for gradients(multi step)
         '''
         # zero grad
-        loss_fn = nn.MSELoss(reduction='none')
+        loss_fn = nn.MSELoss()
 
         # forward propagate on query data
         outputs = self.model(query_inputs, params=names_weights_copy)
-        gt = torch.cat(
-            (query_inputs[3], query_target_rating), dim=1)
-        mask = (gt != 0)
+
         # compute loss
         if self.normalize_loss:
-            query_loss = loss_fn(outputs*mask, gt*mask/5.0).sum()/mask.sum()
+            query_loss = loss_fn(outputs, query_target_rating/5.0)
             mae_loss = mae_loss_fn(
-                outputs[:, -1:].clone().detach()*5, query_target_rating)
-            query_out_loss = torch.mean(loss_fn(
-                outputs[:, -1:]*5.0, query_target_rating)).clone().detach().to("cpu")
+                outputs.clone().detach()*5, query_target_rating)
+            query_out_loss = loss_fn(
+                outputs*5.0, query_target_rating).clone().detach().to("cpu")
         else:
-            query_loss = loss_fn(outputs*mask, gt*mask).sum()/mask.sum()
+            query_loss = loss_fn(outputs, query_target_rating)
             mae_loss = mae_loss_fn(
-                outputs[:, -1:].clone().detach(), query_target_rating)
-            query_out_loss = torch.mean(loss_fn(
-                outputs[:, -1:], query_target_rating)).clone().detach().to("cpu")
+                outputs.clone().detach(), query_target_rating)
+            query_out_loss = loss_fn(
+                outputs, query_target_rating).clone().detach().to("cpu")
 
         query_loss = query_loss * imp_weight
 
@@ -352,13 +346,12 @@ class MAML:
             # loss = torch.mean(loss)
 
         else:
-            loss = torch.mean(loss)
-            task_info_adapt = (task_info-task_info.mean()) / \
-                (task_info.std() + 1e-12)
+            # loss = torch.mean(loss)
+            # task_info_adapt = (task_info-task_info.mean()) / \
+            #     (task_info.std() + 1e-12)
             if self.use_adaptive_loss_weight:
-                weight = self.task_info_network(task_info_adapt)[0]
-                loss = (weight *
-                        self.loss_network(support_task_state_adapt, step)).squeeze()
+                weight = self.task_info_network(task_info)
+                loss = torch.mean(loss*weight)
             else:
                 loss = self.loss_network(
                     support_task_state_adapt.reshape(1, -1), step).squeeze()
@@ -411,22 +404,21 @@ class MAML:
 
             # forward propagate on support set
             outputs = self.model(inputs, params=names_weights_copy)
-            gt = torch.cat(
-                (inputs[3], target_rating), dim=1)
-            mask = (gt != 0)
+            task_info_f = torch.cat((task_info, outputs), dim=1)
+
             # compute loss
             if self.normalize_loss:
-                loss = loss_fn(outputs*mask, gt*mask/5.0)  # .sum()/mask.sum()
+                loss = loss_fn(outputs, target_rating/5.0)  # .sum()/mask.sum()
             else:
-                loss = loss_fn(outputs*mask, gt*mask)  # .sum()/mask.sum()
+                loss = loss_fn(outputs, target_rating)  # .sum()/mask.sum()
 
             # adaptive loss
             if self.use_adaptive_loss:
                 loss = self.compute_adaptive_loss(
-                    loss, names_weights_copy, inputs, target_rating, step, task_info)
+                    loss, names_weights_copy, inputs, target_rating, step, task_info_f)
 
             else:
-                loss = loss.sum()/mask.sum()
+                loss = loss.mean()
 
             # update inner loop paramters phi
             names_weights_copy = self.apply_inner_loop_update(

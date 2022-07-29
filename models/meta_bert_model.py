@@ -196,9 +196,9 @@ class MetaBERT4Rec(nn.Module):
         self.args = args
         self.bert = MetaBERT(args)
         self.dim_reduct = MetaLinearLayer(self.bert.hidden, 1)
-        # self.out1 = MetaLinearLayer(16*(args.max_seq_len), 128)
+        self.out1 = MetaLinearLayer((args.max_seq_len), 1)
         # self.out2 = MetaLinearLayer(128, 1)
-        # self.relu = nn.ReLU()
+        self.relu = nn.ReLU()
 
     def forward(self, inputs, params=None):
         if params is not None:
@@ -206,13 +206,13 @@ class MetaBERT4Rec(nn.Module):
             param_dict = extract_top_level_dict(current_dict=params)
             bert_params = param_dict['bert']
             dim_reduct_params = param_dict['dim_reduct']
-            # out1_params = param_dict['out1']
+            out1_params = param_dict['out1']
             # out2_params = param_dict['out2']
 
         else:
             bert_params = None
             dim_reduct_params = None
-            # out1_params = None
+            out1_params = None
             # out2_params = None
 
         x = self.bert(inputs, params=bert_params)
@@ -220,7 +220,7 @@ class MetaBERT4Rec(nn.Module):
         b, t, d = x.shape
         x = x.view(b, -1)  # Batch size x (t*d)
         # x = self.relu(x)
-        # x = self.out1(x, params=out1_params)
+        x = self.out1(x, params=out1_params)
         # x = self.relu(x)
         # x = self.out2(x, params=out2_params)
         return 0.1 + torch.sigmoid(x)

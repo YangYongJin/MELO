@@ -46,7 +46,7 @@ parser.add_argument('--min_outer_lr', type=float, default=1e-4,
                     help='min outer-loop bert learning rate')
 parser.add_argument('--loss_lr', type=float, default=1e-3,
                     help='outer-loop learning rate')
-parser.add_argument('--task_info_lr', type=float, default=1e-3,
+parser.add_argument('--task_info_lr', type=float, default=1e-4,
                     help='outer-loop learning rate')
 parser.add_argument('--lstm_lr', type=float, default=1e-3,
                     help='lstm learning rate')
@@ -118,7 +118,7 @@ parser.add_argument('--num_samples', type=int, default=64,
                     help='number of subsamples')
 parser.add_argument('--num_query_set', type=int, default=8,
                     help='number of query samples')
-parser.add_argument('--default_rating', type=int, default=0,
+parser.add_argument('--default_rating', type=int, default=1,
                     help='rating value for padding')
 parser.add_argument('--min_sub_window_size', type=int, default=15,
                     help=('minimum sequence during subsampling'))

@@ -120,7 +120,7 @@ class MetaPositionalEmbedding(nn.Module):
         super().__init__()
 
         # Compute the positional encodings once in log space.
-        self.weights = nn.Parameter(torch.ones(max_len+1, d_model))
+        self.weights = nn.Parameter(torch.ones(max_len, d_model))
         nn.init.xavier_uniform_(self.weights)
 
     def forward(self, x, params=None):
@@ -168,15 +168,15 @@ class MetaBERTEmbedding(nn.Module):
         else:
             embedding_params = None
             position_params = None
-        product_his = torch.cat((product_history, target_product_id), dim=1)
-        x = self.embedding(product_his, params=embedding_params) + \
-            self.position(product_his, params=position_params)
+
+        x = self.embedding(product_history, params=embedding_params) + \
+            self.position(product_history, params=position_params)
         B, T = product_history_ratings.shape
 
-        # target_info = self.embedding(
-        #     target_product_id, params=embedding_params).view(B, 1, -1)
-        # x = x*product_history_ratings.view(B, T, 1)
-        # x = torch.cat([x, target_info], dim=1)
+        target_info = self.embedding(
+            target_product_id, params=embedding_params).view(B, 1, -1)
+        x = x*product_history_ratings.view(B, T, 1)
+        x = torch.cat([x, target_info], dim=1)
         return self.dropout(x)
 
 
