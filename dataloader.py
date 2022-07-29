@@ -77,7 +77,7 @@ class DataLoader():
             data_path : path of file containing target data
             min_sequence : minimum sequence used to filter users
             min_item : minimum item size used to filter items
-            mode : "amazon" or "ml-1m" or "yelp"
+            mode : "amazon" or "yelp" or "ml-1m" or "ml-10m"
 
         return:
             df : preprocessed data
@@ -86,7 +86,12 @@ class DataLoader():
         '''
         print("Preprocessing Started")
         if mode == "ml-1m":
-            self.download_raw_movielnes_data()
+            self.download_raw_movielnes_data(mode)
+            raw_df = pd.read_csv(data_path, sep='::',
+                                 header=None, engine="python")
+            raw_df.columns = ['user_id', 'product_id', 'rating', 'date']
+        elif mode == "ml-10m":
+            self.download_raw_movielnes_data(mode)
             raw_df = pd.read_csv(data_path, sep='::',
                                  header=None, engine="python")
             raw_df.columns = ['user_id', 'product_id', 'rating', 'date']
@@ -125,21 +130,30 @@ class DataLoader():
         print("Preprocessing Finished!")
         return df, umap, smap
 
-    def download_raw_movielnes_data(self):
+    def download_raw_movielnes_data(self, mode):
         '''
-            This function downloads movielens-1m
+            This function downloads movielens-1m, movielens-10m
         '''
-        folder_path = Path(ROOT_FOLDER).joinpath("ml-1m")
-        if folder_path.is_dir() and\
-                all(folder_path.joinpath(filename).is_file() for filename in self.all_raw_file_names()):
-            print('Raw data already exists. Skip downloading')
-            return
+        if mode == "ml-1m":
+            folder_path = Path(ROOT_FOLDER).joinpath("ml-1m")
+            if folder_path.is_dir() and\
+                    all(folder_path.joinpath(filename).is_file() for filename in self.all_raw_file_names_1m()):
+                print('Raw data already exists. Skip downloading')
+                return
+
+        elif mode == "ml-10m":
+            folder_path = Path(ROOT_FOLDER).joinpath("ml-10m")
+            if folder_path.is_dir() and\
+                    all(folder_path.joinpath(filename).is_file() for filename in self.all_raw_file_names_10m()):
+                print('Raw data already exists. Skip downloading')
+                return
+
         print("Raw file doesn't exist. Downloading...")
         if True:
             tmproot = Path(tempfile.mkdtemp())
             tmpzip = tmproot.joinpath('file.zip')
             tmpfolder = tmproot.joinpath('folder')
-            wget.download(self.get_url(), str(tmpzip))
+            wget.download(self.get_url(mode), str(tmpzip))
             zip = zipfile.ZipFile(tmpzip)
             zip.extractall(tmpfolder)
             zip.close()
@@ -148,14 +162,26 @@ class DataLoader():
             shutil.rmtree(tmproot)
             print()
 
-    def all_raw_file_names(cls):
+    def all_raw_file_names_1m(cls):
         return ['README',
                 'movies.dat',
                 'ratings.dat',
                 'users.dat']
 
-    def get_url(self):
-        return "http://files.grouplens.org/datasets/movielens/ml-1m.zip"
+    def all_raw_file_names_10m(cls):
+        return ['allbut.pl',
+                'movies.dat',
+                'ratings.dat',
+                'README.html',
+                'split_ratings.sh',
+                'tags.dat']
+
+    def get_url(self, mode):
+        if mode == "ml-1m":
+            url = "https://files.grouplens.org/datasets/movielens/ml-1m.zip"
+        elif mode == "ml-10m":
+            url = "https://files.grouplens.org/datasets/movielens/ml-10m.zip"
+        return url
 
     def filter_triplets(self, df, min_sequence, min_item):
         '''
@@ -233,7 +259,7 @@ class DataLoader():
             product_ids) < self.max_sequence_length else self.max_sequence_length
         rand_idx = np.random.randint(
             len(product_ids) + 1 - cut_num)
-        if mode is not 'train':
+        if mode != 'train':
             rand_idx = len(product_ids) - cut_num
         ratings = self.cut_sequences(ratings, rand_idx)
         product_ids = self.cut_sequences(product_ids, rand_idx)
