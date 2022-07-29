@@ -95,24 +95,24 @@ class Pretrain:
             # forward prop
             outputs = self.model(
                 x_inputs)
-            gt = torch.cat(
-                (x_inputs[3], target_rating), dim=1)
-            mask = (gt != 0)
+            # gt = torch.cat(
+            #     (x_inputs[3], target_rating), dim=1)
+            # mask = (gt != 0)
 
             # compute loss
             if self.normalize_loss:
-                loss = self.loss_fn(outputs*mask, gt*mask/5.0)
+                loss = self.loss_fn(outputs, target_rating/5.0)
                 mse_loss = self.loss_fn(
-                    outputs[:, -1:].clone().detach()*5, target_rating)
+                    outputs.clone().detach()*5, target_rating)
                 mae_loss = self.mae_loss_fn(
-                    outputs[:, -1:].clone().detach()*5, target_rating)
+                    outputs.clone().detach()*5, target_rating)
                 rmse_loss = torch.sqrt(mse_loss)
             else:
-                loss = self.loss_fn(outputs*mask, gt*mask)
+                loss = self.loss_fn(outputs, target_rating)
                 mse_loss = self.loss_fn(
-                    outputs[:, -1:].clone().detach(), target_rating)
+                    outputs.clone().detach(), target_rating)
                 mae_loss = self.mae_loss_fn(
-                    outputs[:, -1:].clone().detach(), target_rating)
+                    outputs.clone().detach(), target_rating)
                 rmse_loss = torch.sqrt(mse_loss)
 
             # update paramters
