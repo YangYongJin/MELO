@@ -107,7 +107,7 @@ class MAML:
         # options - using adaptive loss and using weight of adaptive loss
         self.use_adaptive_loss = args.use_adaptive_loss
         self.use_adaptive_loss_weight = (
-            args.use_adaptive_loss_weight and self.use_adaptive_loss)
+            args.use_mlp and self.use_adaptive_loss)
         self.use_lstm = (
             args.use_lstm and self.use_adaptive_loss)
         num_loss_dims = None
@@ -125,15 +125,13 @@ class MAML:
 
          # settings for adaptive loss weight
         if self.use_adaptive_loss_weight:
-            num_loss_weight_dims = 1*args.task_info_rating_mean + 1 * \
-                args.task_info_rating_std + 1*args.task_info_num_samples + \
-                5*args.task_info_rating_distribution
+            num_loss_weight_dims = 4
             self._task_info_lr = args.task_info_lr
             self.task_info_network = nn.Sequential(
                 nn.Linear(num_loss_weight_dims,
-                          num_loss_weight_dims, bias=False),
+                          num_loss_weight_dims, bias=True),
                 nn.ReLU(),
-                nn.Linear(num_loss_weight_dims, 1, bias=False),
+                nn.Linear(num_loss_weight_dims, 1, bias=True),
             ).to(self.device)
             self.task_info_optimizer = optim.Adam(
                 self.task_info_network.parameters(), lr=self._task_info_lr)
@@ -152,7 +150,9 @@ class MAML:
             self.task_lstm_optimizer = optim.Adam(
                 self.task_lstm_network.parameters(), lr=self._lstm_lr)
 
-            # best results
+        self.use_mlp_mean = args.use_mlp_mean
+
+        # best results
         self.best_step = 0
         self.best_valid_rmse_loss = 987654321
 
@@ -326,7 +326,7 @@ class MAML:
 
         return query_loss, query_out_loss, mae_loss
 
-    def compute_adaptive_loss(self, loss, names_weights_copy, inputs, target_rating, step, task_info):
+    def compute_adaptive_loss(self, loss, names_weights_copy, inputs, target_rating, step, mask, task_info):
         '''
         Compute Adaptive Loss
         Args:
@@ -354,21 +354,27 @@ class MAML:
                 (inputs[3], target_rating), dim=1)
             task_info = self.task_lstm_network(
                 task_input).squeeze()
-            adapt_loss = loss * task_info
-            loss = self.loss_network(adapt_loss, step).squeeze()
-            loss = torch.mean(loss)
+            adapt_loss = loss * task_info * mask
+            if self.use_mlp_mean:
+                    loss = self.loss_network(adapt_loss, step).squeeze()
+                    loss = torch.mean(loss)
+            else:
+                loss = adapt_loss.sum()/torch.count_nonzero(adapt_loss)
 
         else:
-            loss = torch.mean(loss)
             task_info_adapt = (task_info-task_info.mean()) / \
                 (task_info.std() + 1e-12)
             if self.use_adaptive_loss_weight:
-                weight = self.task_info_network(task_info_adapt)[0]
-                loss = (weight *
-                        self.loss_network(support_task_state_adapt, step)).squeeze()
+                weight = self.task_info_network(task_info_adapt).squeeze()
+                adapt_loss = weight * loss * mask
+                if self.use_mlp_mean:
+                    loss = self.loss_network(adapt_loss, step).squeeze()
+                    loss = torch.mean(loss)
+                else:
+                    loss = adapt_loss.sum()/torch.count_nonzero(adapt_loss)
             else:
                 loss = self.loss_network(
-                    support_task_state_adapt.reshape(1, -1), step).squeeze()
+                    loss, step).squeeze()
 
         return loss
 
@@ -429,8 +435,10 @@ class MAML:
 
             # adaptive loss
             if self.use_adaptive_loss:
+                task_info_f = torch.cat(
+                    (task_info, outputs.unsqueeze(2)), dim=2)
                 loss = self.compute_adaptive_loss(
-                    loss, names_weights_copy, inputs, target_rating, step, task_info)
+                    loss, names_weights_copy, inputs, target_rating, step, mask, task_info_f)
 
             else:
                 loss = loss.sum()/mask.sum()
