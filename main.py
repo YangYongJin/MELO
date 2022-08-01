@@ -114,8 +114,7 @@ class MAML:
         # settings for adaptive loss
         if self.use_adaptive_loss:
             self._loss_lr = args.loss_lr
-            num_loss_dims = len(self.get_inner_loop_parameter_dict(
-                params=self.model.named_parameters()).keys()) + 1
+            num_loss_dims = args.max_seq_len
             self.loss_network = MetaLossNetwork(
                 self._num_inner_steps, num_loss_dims, args.loss_num_layers).to(self.device)
             self.loss_optimizer = optim.Adam(
@@ -226,6 +225,9 @@ class MAML:
 
     # zero_grad all meta parameters
     def zero_grad(self):
+        """
+        reset all gradients of meta paramters
+        """
         # initialize meta parameters
         self.meta_optimizer.zero_grad()
         if self.use_adaptive_loss:
@@ -238,6 +240,10 @@ class MAML:
             self.lr_optimizer.zero_grad()
 
     def update_meta_params(self, mse_loss):
+        """
+        update all meta paramters
+        :param mse_loss: meta mse loss
+        """
         mse_loss.backward()
         total_norm = 0.0
         for p in self.model.parameters():
@@ -252,14 +258,6 @@ class MAML:
         self.meta_optimizer.step()
         self.meta_lr_scheduler.step()
         if self.use_adaptive_loss:
-            # total_norm = 0.0
-            # for p in self.loss_network.parameters():
-            #     if p.requires_grad:
-            #         param_norm = p.grad.detach().data.norm(2)
-            #         total_norm += param_norm.item() ** 2
-            # total_norm = total_norm ** 0.5
-            # print(total_norm)
-
             self.loss_optimizer.step()
             # self.loss_lr_scheduler.step()
         if self.use_lstm:
@@ -289,15 +287,17 @@ class MAML:
 
     def query_forward(self, query_inputs, query_target_rating, names_weights_copy, mae_loss_fn, imp_weight=1):
         '''
-        Update gradient values of meta learning parameters
+        Forward propagation on query data
         Args:
             query_inputs: query inputs
             query_target_rating : query target rating
-            optimizer: inner loop optimizer
-            loss_fn : inner loop loss(mse)
-            mae_loss_fn : mae loss
-            phi_model : current inner loop paramters phi
+            names_weights_copy: inner loop parameters
+            mae_loss_fn : mae loss function
             imp_weight : importance weight vector for gradients(multi step)
+        return:
+            query_loss : query loss containing gradients
+            query_out_loss: query loss to show
+            mae_loss: query mae loss to show
         '''
         # zero grad
         loss_fn = nn.MSELoss(reduction='none')
@@ -309,7 +309,8 @@ class MAML:
         mask = (gt != 0)
         # compute loss
         if self.normalize_loss:
-            query_loss = loss_fn(outputs*mask, gt*mask/5.0).sum()/mask.sum()
+            query_loss = loss_fn(
+                outputs*mask, gt*mask/5.0).sum()/mask.sum()
             mae_loss = mae_loss_fn(
                 outputs[:, -1:].clone().detach()*5, query_target_rating)
             query_out_loss = torch.mean(loss_fn(
@@ -326,6 +327,18 @@ class MAML:
         return query_loss, query_out_loss, mae_loss
 
     def compute_adaptive_loss(self, loss, names_weights_copy, inputs, target_rating, step, task_info):
+        '''
+        Compute Adaptive Loss
+        Args:
+            loss: base loss
+            names_weights_copy : inner loop paramters
+            inputs: support data
+            target_rating : target ratings
+            step : current inner loop step
+            task_info : task information of current task
+        return:
+            loss: adaptive loss
+        '''
         support_task_state = []
         # normalize task information
         for v in names_weights_copy.values():
@@ -338,18 +351,12 @@ class MAML:
 
         if self.use_lstm:
             task_input = torch.cat(
-                (inputs[3], target_rating), dim=1)  # /5.0
+                (inputs[3], target_rating), dim=1)
             task_info = self.task_lstm_network(
                 task_input).squeeze()
-            # task_info = task_info[:, -1, :]
             adapt_loss = loss * task_info
-            loss = adapt_loss.sum()/torch.count_nonzero(adapt_loss)
-            # task_info = task_info.mean(dim=0)
-            # task_info_adapt = (task_info-task_info.mean(dim=1, keepdim=True)) / \
-            #     (task_info.std(dim=1, keepdim=True) + 1e-5)
-            # task_adapt = task_info * support_task_state_adapt
-            # loss = self.loss_network(task_adapt, step).squeeze()
-            # loss = torch.mean(loss)
+            loss = self.loss_network(adapt_loss, step).squeeze()
+            loss = torch.mean(loss)
 
         else:
             loss = torch.mean(loss)
@@ -374,12 +381,12 @@ class MAML:
             task_info: task information
             query_inputs: query data
             query_target_rating: query target
-            imp_vecs: important vectors for multi step loss
-            train: train params
+            train: if false, do not use multi step loss
 
         Returns:
-            query_loss: query mse loss
-            mae_loss: query mae loss
+            query_loss : query loss containing gradients
+            query_out_loss: query loss to show
+            mae_loss: query mae loss to show
         """
 
         # loss functions
@@ -416,9 +423,9 @@ class MAML:
             mask = (gt != 0)
             # compute loss
             if self.normalize_loss:
-                loss = loss_fn(outputs*mask, gt*mask/5.0)  # .sum()/mask.sum()
+                loss = loss_fn(outputs*mask, gt*mask/5.0)
             else:
-                loss = loss_fn(outputs*mask, gt*mask)  # .sum()/mask.sum()
+                loss = loss_fn(outputs*mask, gt*mask)
 
             # adaptive loss
             if self.use_adaptive_loss:
@@ -440,7 +447,7 @@ class MAML:
                 task_mse_out_losses.append(query_out_loss)
                 task_mae_losses.append(mae_loss)
 
-            ##### Fo-maml loss - update meta paramters at last step ####
+            ##### maml loss - update meta paramters at last step ####
             ### also use this step for valid set ###
             else:
                 # at last step

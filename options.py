@@ -26,9 +26,9 @@ parser.add_argument('--log_interval', type=int, default=50,
                     help=('validation error logging interval'))
 parser.add_argument('--num_test_data', type=int, default=1000,
                     help='the number of test data')
-parser.add_argument('--min_sequence', type=int, default=5,
+parser.add_argument('--min_sequence', type=int, default=20,
                     help='minimum number of reviews users should have')
-parser.add_argument('--min_item', type=int, default=10,
+parser.add_argument('--min_item', type=int, default=50,
                     help='minimum number of reviews items should have')
 parser.add_argument('--random_seed', type=int, default=222,
                     help=('test data random seed'))
@@ -67,7 +67,7 @@ parser.add_argument('--lstm_input_size', type=int, default=32,
                     help='input dimension of lstm')
 
 # adaptive loss network
-parser.add_argument('--loss_num_layers', type=int, default=2,
+parser.add_argument('--loss_num_layers', type=int, default=1,
                     help='the number of adaptive loss layers')
 
 # choice of model
@@ -94,7 +94,7 @@ parser.add_argument('--narm_hidden_size', type=int, default=32,
                     help='narm gru hidden size')
 parser.add_argument('--narm_n_layers', type=int, default=1,
                     help='narm gru num layers')
-parser.add_argument('--narm_embedding_dim', type=int, default=64,
+parser.add_argument('--narm_embedding_dim', type=int, default=32,
                     help='narm embedding dimension')
 
 # gru4rec model
@@ -102,7 +102,7 @@ parser.add_argument('--gru4rec_hidden_size', type=int, default=32,
                     help='gru4rec gru hidden size')
 parser.add_argument('--gru4rec_n_layers', type=int, default=2,
                     help='gru4rec gru num layers')
-parser.add_argument('--gru4rec_embedding_dim', type=int, default=64,
+parser.add_argument('--gru4rec_embedding_dim', type=int, default=32,
                     help='gru4rec embedding dimension')
 
 # dataloader parameters
@@ -112,7 +112,7 @@ parser.add_argument('--num_items', type=int, default=0,
                     help='number of items')
 parser.add_argument('--batch_size', type=int, default=16,
                     help='batch size')
-parser.add_argument('--val_size', type=int, default=500,
+parser.add_argument('--val_size', type=int, default=600,
                     help='val batch size')
 parser.add_argument('--num_samples', type=int, default=64,
                     help='number of subsamples')
@@ -155,7 +155,7 @@ parser.add_argument('--task_info_rating_distribution', type=boolean_string, defa
 # pretraining options
 parser.add_argument('--pretraining_batch_size', type=int, default=128,
                     help='batch size during pretraining')
-parser.add_argument('--pretrain_epochs', type=int, default=1000,
+parser.add_argument('--pretrain_epochs', type=int, default=100,
                     help='the number of epochs for pretraining')
 parser.add_argument('--pretraining_lr', type=float, default=1e-3,
                     help='learning rate during pretraining')

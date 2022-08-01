@@ -29,10 +29,10 @@ class MetaStepLossNetwork(nn.Module):
         self.layers = nn.ModuleList()
         for _ in range(num_loss_layers-1):
             self.layers.append(nn.Sequential(
-                nn.Linear(num_loss_hidden, num_loss_hidden, bias=False),
+                nn.Linear(num_loss_hidden, num_loss_hidden, bias=True),
                 nn.ReLU()
             ))
-        self.layers.append(nn.Linear(num_loss_hidden, 1, bias=False))
+        self.layers.append(nn.Linear(num_loss_hidden, 1, bias=True))
 
     def forward(self, x):
         # x = self.in_linear(x)
@@ -40,9 +40,9 @@ class MetaStepLossNetwork(nn.Module):
         # x = x.reshape(b, c, 1)
         # x, _ = self.attention(x, x, x)
         # x = x.reshape(b, c)
-        for layer in self.layers:
-            x = layer(x)
-        return x
+        # for layer in self.layers:
+        #     x = layer(x)
+        return self.layers[-1](x)
 
 
 class MetaLossNetwork(nn.Module):
