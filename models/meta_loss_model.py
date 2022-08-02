@@ -78,10 +78,25 @@ class MetaTaskLstmNetwork(nn.Module):
         x = x.long()
         x = self.embedding(x)
         b, t, _ = x.shape
-        h0 = self.h0.repeat(b, 1, 1).permute(1, 0, 2)
-        c0 = self.c0.repeat(b, 1, 1).permute(1, 0, 2)
+        h0 = self.h0.repeat(b, 1, 1).permute(1, 0, 2).contiguous()
+        c0 = self.c0.repeat(b, 1, 1).permute(1, 0, 2).contiguous()
         # embs = pack_padded_sequence(x, lengths, batch_first=True)
         lstm_out, (hidden, c) = self.lstm(x, (h0, c0))
         # lstm_out, lengths = pad_packed_sequence(lstm_out, batch_first=True)
 
-        return self.out_net(lstm_out).squeeze()
+        return F.softmax(self.out_net(lstm_out).squeeze(), dim=0)
+
+
+class MetaTaskMLPNetwork(nn.Module):
+    def __init__(self, num_loss_weight_dims):
+        super().__init__()
+        self.mlp = nn.Sequential(
+            nn.Linear(num_loss_weight_dims,
+                      num_loss_weight_dims, bias=True),
+            nn.ReLU(),
+            nn.Linear(num_loss_weight_dims, 1, bias=True),
+        )
+
+    def forward(self, x):
+
+        return F.softmax(self.mlp(x).squeeze(), dim=0)

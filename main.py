@@ -1,6 +1,6 @@
 from multiprocessing import reduction
 from models import model_factory
-from models.meta_loss_model import MetaLossNetwork, MetaTaskLstmNetwork
+from models.meta_loss_model import MetaLossNetwork, MetaTaskMLPNetwork, MetaTaskLstmNetwork
 from inner_loop_optimizers import LSLRGradientDescentLearningRule
 from dataloader import DataLoader
 from options import args
@@ -79,7 +79,8 @@ class MAML:
         self._outer_lr = args.outer_lr
 
         # user normalized ratings (0, 1)
-        self.normalize_loss = self.args.normalize_loss
+        self.normalize_loss = args.normalize_loss
+        self.use_shrinkage_loss = args.use_shrinkage_loss
 
         # inner loop optimizer
         # self.inner_loop_optimizer = GradientDescentLearningRule(
@@ -125,14 +126,10 @@ class MAML:
 
          # settings for adaptive loss weight
         if self.use_adaptive_loss_weight:
-            num_loss_weight_dims = 4
+            num_loss_weight_dims = 5
             self._task_info_lr = args.task_info_lr
-            self.task_info_network = nn.Sequential(
-                nn.Linear(num_loss_weight_dims,
-                          num_loss_weight_dims, bias=True),
-                nn.ReLU(),
-                nn.Linear(num_loss_weight_dims, 1, bias=True),
-            ).to(self.device)
+            self.task_info_network = MetaTaskMLPNetwork(
+                num_loss_weight_dims).to(self.device)
             self.task_info_optimizer = optim.Adam(
                 self.task_info_network.parameters(), lr=self._task_info_lr)
             self.task_info_lr_scheduler = optim.lr_scheduler.\
@@ -356,16 +353,17 @@ class MAML:
                 task_input).squeeze()
             adapt_loss = loss * task_info * mask
             if self.use_mlp_mean:
-                    loss = self.loss_network(adapt_loss, step).squeeze()
-                    loss = torch.mean(loss)
+                loss = self.loss_network(adapt_loss, step).squeeze()
+                loss = torch.mean(loss)
             else:
                 loss = adapt_loss.sum()/torch.count_nonzero(adapt_loss)
 
         else:
-            task_info_adapt = (task_info-task_info.mean()) / \
-                (task_info.std() + 1e-12)
+            # task_info_adapt = (task_info-task_info.mean()) / \
+            #     (task_info.std() + 1e-12)
+            task_info_adapt = torch.cat((task_info, loss.unsqueeze(2)), dim=2)
             if self.use_adaptive_loss_weight:
-                weight = self.task_info_network(task_info_adapt).squeeze()
+                weight = self.task_info_network(task_info_adapt)
                 adapt_loss = weight * loss * mask
                 if self.use_mlp_mean:
                     loss = self.loss_network(adapt_loss, step).squeeze()
@@ -749,7 +747,7 @@ class MAML:
             map_location = 'cpu'
 
         self.model.load_state_dict(torch.load(
-            os.path.join(self._pretrained_dir, f"{self.args.model}_pretrained_{self.args.mode}{self.args.bert_hidden_units}_{self.args.bert_num_blocks}_{self.args.bert_num_heads}"), map_location=map_location))
+            os.path.join(self._pretrained_dir, f"{self.args.model}_pretrained_{self.args.mode}_{self.args.bert_hidden_units}_{self.args.bert_num_blocks}_{self.args.bert_num_heads}"), map_location=map_location))
 
 
 def main(args):

@@ -59,11 +59,11 @@ parser.add_argument('--num_train_iterations', type=int, default=2000,
 
 
 # lstm model
-parser.add_argument('--lstm_hidden', type=int, default=64,
+parser.add_argument('--lstm_hidden', type=int, default=32,
                     help='the number of lstm hidden state dimension')
 parser.add_argument('--lstm_num_layers', type=int, default=1,
                     help='the number of lstm layers')
-parser.add_argument('--lstm_input_size', type=int, default=8,
+parser.add_argument('--lstm_input_size', type=int, default=32,
                     help='input dimension of lstm')
 
 # adaptive loss network
@@ -136,6 +136,8 @@ parser.add_argument('--use_mlp', type=boolean_string, default=False,
                     help='use mlp adaptive loss')
 parser.add_argument('--use_lstm', type=boolean_string, default=True,
                     help='use lstm for task information')
+parser.add_argument('--use_shrinkage_loss', type=boolean_string, default=True,
+                    help='use focal(shrinkage) loss')
 parser.add_argument('--use_mlp_mean', type=boolean_string, default=True,
                     help='use lstm for task information')
 parser.add_argument('--normalize_loss', type=boolean_string, default=True,
