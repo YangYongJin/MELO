@@ -129,7 +129,7 @@ class MAML:
             num_loss_weight_dims = 5
             self._task_info_lr = args.task_info_lr
             self.task_info_network = MetaTaskMLPNetwork(
-                num_loss_weight_dims).to(self.device)
+                num_loss_weight_dims, use_softmax=args.use_softmax).to(self.device)
             self.task_info_optimizer = optim.Adam(
                 self.task_info_network.parameters(), lr=self._task_info_lr)
             self.task_info_lr_scheduler = optim.lr_scheduler.\
@@ -143,7 +143,7 @@ class MAML:
             if lstm_hidden < num_loss_dims:
                 lstm_hidden = num_loss_dims+1
             self.task_lstm_network = MetaTaskLstmNetwork(
-                input_size=args.lstm_input_size, lstm_hidden=lstm_hidden, num_lstm_layers=args.lstm_num_layers, lstm_out=0, device=self.device).to(self.device)
+                input_size=args.lstm_input_size, lstm_hidden=lstm_hidden, num_lstm_layers=args.lstm_num_layers, lstm_out=0, device=self.device, use_softmax=args.use_softmax).to(self.device)
             self.task_lstm_optimizer = optim.Adam(
                 self.task_lstm_network.parameters(), lr=self._lstm_lr)
             self.lstm_lr_scheduler = optim.lr_scheduler.CosineAnnealingLR(
