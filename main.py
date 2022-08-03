@@ -146,6 +146,8 @@ class MAML:
                 input_size=args.lstm_input_size, lstm_hidden=lstm_hidden, num_lstm_layers=args.lstm_num_layers, lstm_out=0, device=self.device).to(self.device)
             self.task_lstm_optimizer = optim.Adam(
                 self.task_lstm_network.parameters(), lr=self._lstm_lr)
+            self.lstm_lr_scheduler = optim.lr_scheduler.CosineAnnealingLR(
+                self.task_lstm_network, T_max=args.num_train_iterations, eta_min=args.min_outer_lr)
 
         self.use_mlp_mean = args.use_mlp_mean
 
@@ -267,6 +269,7 @@ class MAML:
             print(total_norm)
 
             self.task_lstm_optimizer.step()
+            self.lstm_lr_scheduler.step()
         if self.use_adaptive_loss_weight:
             self.task_info_optimizer.step()
             # self.task_info_lr_scheduler.step()
@@ -336,15 +339,6 @@ class MAML:
         return:
             loss: adaptive loss
         '''
-        support_task_state = []
-        # normalize task information
-        for v in names_weights_copy.values():
-            support_task_state.append(v.mean())
-
-        support_task_state.append(loss.mean())
-        support_task_state = torch.stack(support_task_state)
-        support_task_state_adapt = (
-            support_task_state - support_task_state.mean())/(support_task_state.std() + 1e-12)
 
         if self.use_lstm:
             task_input = torch.cat(

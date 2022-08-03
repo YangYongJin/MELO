@@ -59,7 +59,7 @@ class MetaLossNetwork(nn.Module):
 
 
 class MetaTaskLstmNetwork(nn.Module):
-    def __init__(self, input_size, lstm_hidden, num_lstm_layers, lstm_out=0, device="cpu"):
+    def __init__(self, input_size, lstm_hidden, num_lstm_layers, lstm_out=0, device="cpu", use_softmax=False):
         super().__init__()
         if lstm_out == 0:
             lstm_out_size = lstm_hidden
@@ -72,6 +72,7 @@ class MetaTaskLstmNetwork(nn.Module):
             batch_first=True, input_size=input_size, hidden_size=lstm_hidden, num_layers=num_lstm_layers, proj_size=lstm_out)
         self.device = device
         self.out_net = nn.Linear(lstm_out_size, 1)
+        self.use_softmax = use_softmax
 
     def forward(self, x):
         # x, lengths = change_padding_pos(x, self.device)
@@ -83,12 +84,14 @@ class MetaTaskLstmNetwork(nn.Module):
         # embs = pack_padded_sequence(x, lengths, batch_first=True)
         lstm_out, (hidden, c) = self.lstm(x, (h0, c0))
         # lstm_out, lengths = pad_packed_sequence(lstm_out, batch_first=True)
-
-        return F.softmax(self.out_net(lstm_out).squeeze(), dim=0)
+        if self.use_softmax:
+            return F.softmax(self.out_net(lstm_out).squeeze(), dim=0)
+        else:
+            return torch.abs(self.out_net(lstm_out).squeeze())
 
 
 class MetaTaskMLPNetwork(nn.Module):
-    def __init__(self, num_loss_weight_dims):
+    def __init__(self, num_loss_weight_dims, use_softmax=False):
         super().__init__()
         self.mlp = nn.Sequential(
             nn.Linear(num_loss_weight_dims,
@@ -96,7 +99,10 @@ class MetaTaskMLPNetwork(nn.Module):
             nn.ReLU(),
             nn.Linear(num_loss_weight_dims, 1, bias=True),
         )
+        self.use_softmax = use_softmax
 
     def forward(self, x):
-
-        return F.softmax(self.mlp(x).squeeze(), dim=0)
+        if self.use_softmax:
+            return F.softmax(self.mlp(x).squeeze(), dim=0)
+        else:
+            return torch.abs(self.mlp(x).squeeze())

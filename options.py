@@ -46,9 +46,9 @@ parser.add_argument('--min_outer_lr', type=float, default=1e-4,
                     help='min outer-loop bert learning rate')
 parser.add_argument('--loss_lr', type=float, default=1e-3,
                     help='outer-loop learning rate')
-parser.add_argument('--task_info_lr', type=float, default=1e-3,
+parser.add_argument('--task_info_lr', type=float, default=1e-2,
                     help='outer-loop learning rate')
-parser.add_argument('--lstm_lr', type=float, default=1e-3,
+parser.add_argument('--lstm_lr', type=float, default=1e-1,
                     help='lstm learning rate')
 parser.add_argument('--learn_lr', type=float, default=1e-3,
                     help='learning rate of learning rate')
@@ -140,6 +140,8 @@ parser.add_argument('--use_shrinkage_loss', type=boolean_string, default=True,
                     help='use focal(shrinkage) loss')
 parser.add_argument('--use_mlp_mean', type=boolean_string, default=True,
                     help='use lstm for task information')
+parser.add_argument('--use_softmax', type=boolean_string, default=False,
+                    help='use softmax at task layer')
 parser.add_argument('--normalize_loss', type=boolean_string, default=True,
                     help='use normalized ratings')
 
