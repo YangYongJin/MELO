@@ -84,10 +84,10 @@ class MetaTaskLstmNetwork(nn.Module):
         # embs = pack_padded_sequence(x, lengths, batch_first=True)
         lstm_out, (hidden, c) = self.lstm(x, (h0, c0))
         # lstm_out, lengths = pad_packed_sequence(lstm_out, batch_first=True)
-        if self.use_softmax:
-            return F.softmax(self.out_net(lstm_out).squeeze(), dim=0)
-        else:
-            return torch.abs(self.out_net(lstm_out).squeeze())
+        # if self.use_softmax:
+        #     return F.softmax(self.out_net(lstm_out).squeeze(), dim=0)
+        # else:
+        return torch.abs(self.out_net(lstm_out).squeeze())
 
 
 class MetaTaskMLPNetwork(nn.Module):
@@ -102,7 +102,4 @@ class MetaTaskMLPNetwork(nn.Module):
         self.use_softmax = use_softmax
 
     def forward(self, x):
-        if self.use_softmax:
-            return F.softmax(self.mlp(x).squeeze(), dim=0)
-        else:
-            return torch.abs(self.mlp(x).squeeze())
+        torch.abs(self.mlp(x).squeeze())
