@@ -147,7 +147,7 @@ class MAML:
             self.task_lstm_optimizer = optim.Adam(
                 self.task_lstm_network.parameters(), lr=self._lstm_lr)
             self.lstm_lr_scheduler = optim.lr_scheduler.CosineAnnealingLR(
-                self.task_lstm_network, T_max=args.num_train_iterations, eta_min=args.min_outer_lr)
+                self.task_lstm_optimizer, T_max=args.num_train_iterations, eta_min=args.min_outer_lr)
 
         self.use_mlp_mean = args.use_mlp_mean
 
