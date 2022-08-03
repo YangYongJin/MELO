@@ -269,7 +269,7 @@ class MAML:
             print(total_norm)
 
             self.task_lstm_optimizer.step()
-            self.lstm_lr_scheduler.step()
+            # self.lstm_lr_scheduler.step()
         if self.use_adaptive_loss_weight:
             self.task_info_optimizer.step()
             # self.task_info_lr_scheduler.step()
@@ -326,12 +326,11 @@ class MAML:
 
         return query_loss, query_out_loss, mae_loss
 
-    def compute_adaptive_loss(self, loss, names_weights_copy, inputs, target_rating, step, mask, task_info):
+    def compute_adaptive_loss(self, loss, inputs, target_rating, step, mask, task_info):
         '''
         Compute Adaptive Loss
         Args:
             loss: base loss
-            names_weights_copy : inner loop paramters
             inputs: support data
             target_rating : target ratings
             step : current inner loop step
@@ -430,7 +429,7 @@ class MAML:
                 task_info_f = torch.cat(
                     (task_info, outputs.unsqueeze(2)), dim=2)
                 loss = self.compute_adaptive_loss(
-                    loss, names_weights_copy, inputs, target_rating, step, mask, task_info_f)
+                    loss, inputs, target_rating, step, mask, task_info_f)
 
             else:
                 loss = loss.sum()/mask.sum()
@@ -537,9 +536,6 @@ class MAML:
         writer = SummaryWriter(log_dir=self._log_dir)
         wandb.config.update(self.args)
 
-        # set validation tasks
-        val_batches = self.dataloader.generate_task(
-            mode="valid", batch_size=self.val_size, normalized=self.normalize_loss, use_label=self.args.use_label)
         start_point = self._train_step+1
         # iteration
         for i in range(start_point, train_steps+1):
@@ -568,6 +564,9 @@ class MAML:
 
             # evaluate validation set
             if i % self.val_log_interval == 0:
+                # set validation tasks
+                val_batches = self.dataloader.generate_task(
+                    mode="valid", batch_size=self.val_size, normalized=self.normalize_loss, use_label=self.args.use_label)
                 val_mse_losses = []
                 val_mae_losses = []
                 for j in range(math.ceil(len(val_batches)/self.batch_size)):
