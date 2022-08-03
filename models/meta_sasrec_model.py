@@ -189,12 +189,12 @@ class MetaSAS(nn.Module):
         return x
 
 
-class MetaSAS4Rec(nn.Module):
+class MetaSASRec(nn.Module):
     def __init__(self, args):
         super().__init__()
         self.args = args
         self.bert = MetaSAS(args)
-        self.dim_reduct = MetaLinearLayer(self.bert.hidden, 16)
+        self.dim_reduct = MetaLinearLayer(self.bert.hidden, 1)
         # self.out1 = MetaLinearLayer(16*(args.max_seq_len), 128)
         # self.out2 = MetaLinearLayer(128, 1)
         # self.relu = nn.ReLU()
