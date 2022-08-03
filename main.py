@@ -729,7 +729,7 @@ class MAML:
         else:
             map_location = 'cpu'
 
-        if self.args.model == 'sas4rec' or self.args.model == 'bert4rec':
+        if self.args.model == 'sasrec' or self.args.model == 'bert4rec':
             self.model.bert.bert_embedding.load_state_dict(torch.load(
                 os.path.join(self._embedding_dir, f"{self.args.model}_embedding_{self.args.mode}_{self.args.bert_hidden_units}_{self.args.bert_num_blocks}_{self.args.bert_num_heads}"), map_location=map_location))
             # for param in self.model.bert.bert_embedding.parameters():
