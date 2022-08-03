@@ -213,7 +213,7 @@ class Pretrain:
             save model
         '''
         if self.args.save_pretrained:
-            if self.args.model == 'sas4rec' or self.args.model == 'bert4rec':
+            if self.args.model == 'sasrec' or self.args.model == 'bert4rec':
                 torch.save(self.model.bert.bert_embedding.state_dict(),
                            os.path.join(self._embedding_dir, f"{self.args.model}_embedding_{self.args.mode}_{self.args.bert_hidden_units}_{self.args.bert_num_blocks}_{self.args.bert_num_heads}"))
             else:
