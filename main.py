@@ -729,7 +729,7 @@ class MAML:
             # param.requires_grad = False
         else:
             self.model.embedding.load_state_dict(torch.load(
-                os.path.join(self._embedding_dir, f"{self.args.model}_embedding"), map_location=map_location))
+                os.path.join(self._embedding_dir, f"{self.args.model}_embedding_{self.args.mode}"), map_location=map_location))
             # for param in self.model.embedding.parameters():
             # param.requires_grad = False
 
