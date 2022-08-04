@@ -218,7 +218,7 @@ class Pretrain:
                            os.path.join(self._embedding_dir, f"{self.args.model}_embedding_{self.args.mode}_{self.args.bert_hidden_units}_{self.args.bert_num_blocks}_{self.args.bert_num_heads}"))
             else:
                 torch.save(self.model.embedding.state_dict(),
-                           os.path.join(self._embedding_dir, f"{self.args.model}_embedding"))
+                           os.path.join(self._embedding_dir, f"{self.args.model}_embedding_{self.args.mode}"))
 
             # Save a model to 'pretrained_dir'
             torch.save(self.model.state_dict(),
