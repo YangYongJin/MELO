@@ -662,7 +662,6 @@ class MAML:
         mae_loss = np.mean(mae_loss_batch)
         print(
             f'\tTest: '
-            f'Test MSE loss: {mse_loss:.4f} | '
             f'Test RMSE loss: {rmse_loss:.4f} | '
             f'Test MAE loss: {mae_loss:.4f} | '
         )
