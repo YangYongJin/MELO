@@ -1,6 +1,7 @@
 from models import model_factory
 from dataloader import DataLoader
 from options import args
+import wandb
 
 import torch
 import torch.nn as nn
@@ -141,7 +142,14 @@ class Pretrain:
             train_steps (int) : the number of steps this model should train for
         """
         print(f"Starting MAML training at iteration {self._train_step}")
+
+        # initialize wandb project
+        wandb.init(project=f"BASE-TRAIN-{self.args.model}-{self.args.mode}")
+
+        # define tensorboard writer and wandb config
         writer = SummaryWriter(log_dir=self._log_dir)
+        wandb.config.update(self.args)
+
         for epoch in range(epochs):
             mse_loss, mae_loss, rmse_loss = self.epoch_step(
                 self.pretraining_train_loader)
@@ -168,6 +176,7 @@ class Pretrain:
                     f'Val RMSE loss: {rmse_loss:.4f} | '
                     f'Val MAE loss: {mae_loss:.4f} | '
                 )
+                wandb.log({"loss": rmse_loss})
 
                 # Save the best model wrt valid rmse loss
                 if self.best_valid_rmse_loss > rmse_loss:
@@ -218,7 +227,7 @@ class Pretrain:
                            os.path.join(self._embedding_dir, f"{self.args.model}_embedding_{self.args.mode}_{self.args.bert_hidden_units}_{self.args.bert_num_blocks}_{self.args.bert_num_heads}"))
             else:
                 torch.save(self.model.embedding.state_dict(),
-                           os.path.join(self._embedding_dir, f"{self.args.model}_embedding"))
+                           os.path.join(self._embedding_dir, f"{self.args.model}_embedding_{self.args.mode}"))
 
             # Save a model to 'pretrained_dir'
             torch.save(self.model.state_dict(),
@@ -232,15 +241,25 @@ class Pretrain:
         '''
             test
         '''
+
+        # initialize wandb project
+        wandb.init(project=f"BASE-TEST-{self.args.model}-{self.args.mode}")
+
+        # define wandb config
+        wandb.config.update(self.args)
+
         mse_loss, mae_loss, rmse_loss = self.epoch_step(
             self.pretraining_test_loader, train=False)
 
         print(
             f'\tTest: '
-            f'Test MSE loss: {mse_loss:.4f} | '
             f'Test RMSE loss: {rmse_loss:.4f} | '
             f'Test MAE loss: {mae_loss:.4f} | '
         )
+        wandb.log({
+            "Test RMSE loss": rmse_loss,
+            "Test MAE loss": mae_loss
+        })
 
 
 def main(args):
