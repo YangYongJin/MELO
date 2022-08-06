@@ -48,13 +48,6 @@ class MAML:
         # define model (theta)
         self.model = model_factory(self.args).to(self.device)
 
-        # model_parameters = filter(
-        #     lambda p: p.requires_grad, self.model.bert.bert_embedding.parameters())
-
-        # params = sum([np.prod(p.size()) for p in model_parameters])
-        # print('# of params', params)
-        # 1/0
-
         # set log and save directories
         self._log_dir = args.log_dir
         self._save_dir = os.path.join(args.log_dir, 'state')
@@ -681,6 +674,10 @@ class MAML:
                 map_location = 'cpu'
             checkpoint = torch.load(target_path, map_location=map_location)
             self.model.load_state_dict(checkpoint['meta_model'])
+            self.meta_lr_scheduler.load_state_dict(
+                checkpoint['meta_model_scheduler'])
+            self.meta_optimizer.load_state_dict(
+                checkpoint['meta_model_optimizer'])
             if self.use_adaptive_loss:
                 self.loss_network.load_state_dict(checkpoint['loss_model'])
             if self.use_adaptive_loss_weight:
@@ -705,7 +702,9 @@ class MAML:
         save_path = os.path.join(
             self._save_dir, f"{self.args.model}_{self._train_step}_best_{self.args.mode}_{self.args.model}.pt")
         model_dict = {
-            'meta_model': self.model.state_dict()
+            'meta_model': self.model.state_dict(),
+            'meta_model_scheduler': self.meta_lr_scheduler.state_dict(),
+            'meta_model_optimizer': self.meta_optimizer.state_dict()
         }
         if self.use_adaptive_loss:
             model_dict['loss_model'] = self.loss_network.state_dict()
@@ -726,13 +725,10 @@ class MAML:
         if self.args.model == 'sasrec' or self.args.model == 'bert4rec':
             self.model.bert.bert_embedding.load_state_dict(torch.load(
                 os.path.join(self._embedding_dir, f"{self.args.model}_embedding_{self.args.mode}_{self.args.bert_hidden_units}_{self.args.bert_num_blocks}_{self.args.bert_num_heads}"), map_location=map_location))
-            # for param in self.model.bert.bert_embedding.parameters():
-            # param.requires_grad = False
+
         else:
             self.model.embedding.load_state_dict(torch.load(
                 os.path.join(self._embedding_dir, f"{self.args.model}_embedding"), map_location=map_location))
-            # for param in self.model.embedding.parameters():
-            # param.requires_grad = False
 
     def _load_pretrained(self):
         if torch.cuda.is_available():

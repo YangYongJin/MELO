@@ -2,30 +2,11 @@ import torch
 import torch.nn as nn
 import math
 import torch.nn.functional as F
-from torch.nn.utils.rnn import pack_padded_sequence, pad_packed_sequence
-
-
-def change_padding_pos(ratings, device="cpu"):
-    final_ratings = []
-    lengths = []
-    b, t = ratings.shape
-    for rating in ratings:
-        zero_len = (rating == 0).sum()
-        lengths.append(int((t-zero_len).to("cpu").item()))
-        final_ratings.append(torch.LongTensor(
-            list(rating[zero_len:].long())+zero_len*[0]))
-    final_ratings = torch.stack(final_ratings).to(device)
-    input_lengths = torch.LongTensor(lengths)
-    input_lengths, sorted_idx = input_lengths.sort(0, descending=True)
-    final_ratings = final_ratings[sorted_idx]
-    return final_ratings, input_lengths
 
 
 class MetaStepLossNetwork(nn.Module):
     def __init__(self, num_loss_hidden, num_loss_layers):
         super().__init__()
-        # self.in_linear = nn.Linear(num_loss_hidden, num_loss_hidden, bias=True)
-        # self.attention = nn.MultiheadAttention(1, 1, batch_first=True)
         self.layers = nn.ModuleList()
         for _ in range(num_loss_layers-1):
             self.layers.append(nn.Sequential(
@@ -35,14 +16,9 @@ class MetaStepLossNetwork(nn.Module):
         self.layers.append(nn.Linear(num_loss_hidden, 1, bias=True))
 
     def forward(self, x):
-        # x = self.in_linear(x)
-        # b, c = x.shape
-        # x = x.reshape(b, c, 1)
-        # x, _ = self.attention(x, x, x)
-        # x = x.reshape(b, c)
-        # for layer in self.layers:
-        #     x = layer(x)
-        return self.layers[-1](x)
+        for layer in self.layers:
+            x = layer(x)
+        return x
 
 
 class MetaLossNetwork(nn.Module):
@@ -54,7 +30,7 @@ class MetaLossNetwork(nn.Module):
                 num_loss_hidden, num_loss_layers))
 
     def forward(self, x, step):
-        x = self.loss_layers[step](x)
+        x = self.loss_layers[-1](x)
         return x
 
 
@@ -75,19 +51,17 @@ class MetaTaskLstmNetwork(nn.Module):
         self.use_softmax = use_softmax
 
     def forward(self, x):
-        # x, lengths = change_padding_pos(x, self.device)
         x = x.long()
         x = self.embedding(x)
         b, t, _ = x.shape
         h0 = self.h0.repeat(b, 1, 1).permute(1, 0, 2).contiguous()
         c0 = self.c0.repeat(b, 1, 1).permute(1, 0, 2).contiguous()
-        # embs = pack_padded_sequence(x, lengths, batch_first=True)
         lstm_out, (hidden, c) = self.lstm(x, (h0, c0))
-        # lstm_out, lengths = pad_packed_sequence(lstm_out, batch_first=True)
-        # if self.use_softmax:
-        #     return F.softmax(self.out_net(lstm_out).squeeze(), dim=0)
-        # else:
-        return torch.abs(self.out_net(lstm_out).squeeze())
+
+        if self.use_softmax:
+            return F.softmax(self.out_net(lstm_out).squeeze(), dim=0)
+        else:
+            return torch.abs(self.out_net(lstm_out).squeeze())
 
 
 class MetaTaskMLPNetwork(nn.Module):
@@ -102,4 +76,7 @@ class MetaTaskMLPNetwork(nn.Module):
         self.use_softmax = use_softmax
 
     def forward(self, x):
-        torch.abs(self.mlp(x).squeeze())
+        if self.use_softmax:
+            return F.softmax(self.mlp(x).squeeze(), dim=0)
+        else:
+            return torch.abs(self.mlp(x).squeeze())
