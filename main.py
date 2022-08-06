@@ -520,7 +520,6 @@ class MAML:
         return mse_loss_show, rmse_loss, mae_loss
 
     def train(self, train_steps):
-        wandb.init(project="MELO")
         """Train the MAML.
 
         Optimizes MAML meta-parameters
@@ -532,7 +531,13 @@ class MAML:
         """
         print(f"Starting MAML training at iteration {self._train_step}")
 
-        # define tensorboard writer
+        # initialize wandb project
+        if self.use_adaptive_loss:
+            wandb.init(project=f"MELO-TRAIN-{self.args.model}-{self.args.mode}")
+        else:
+            wandb.init(project=f"MAML-TRAIN-{self.args.model}-{self.args.mode}")
+
+        # define tensorboard writer and wandb config
         writer = SummaryWriter(log_dir=self._log_dir)
         wandb.config.update(self.args)
 
@@ -612,6 +617,15 @@ class MAML:
         '''
             Test on test batches
         '''
+        # initialize wandb project
+        if self.use_adaptive_loss:
+            wandb.init(project=f"MELO-TEST-{self.args.model}-{self.args.mode}")
+        else:
+            wandb.init(project=f"MAML-TEST-{self.args.model}-{self.args.mode}")
+
+        # define wandb config
+        wandb.config.update(self.args)
+
         test_batches = self.dataloader.generate_task(
             mode="test", batch_size=self.args.num_test_data, normalized=self.normalize_loss, use_label=self.args.use_label)
         test_mse_losses = []
@@ -631,6 +645,10 @@ class MAML:
             f'Test RMSE loss: {rmse_loss:.4f} | '
             f'Test MAE loss: {mae_loss:.4f} | '
         )
+        wandb.log({
+            "Test RMSE loss": rmse_loss,
+            "Test MAE loss": mae_loss
+        })
 
     def test_baseline(self):
         '''
