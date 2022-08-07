@@ -26,7 +26,7 @@ parser.add_argument('--log_interval', type=int, default=50,
                     help=('validation error logging interval'))
 parser.add_argument('--num_test_data', type=int, default=1000,
                     help='the number of test data')
-parser.add_argument('--min_sequence', type=int, default=20,
+parser.add_argument('--min_sequence', type=int, default=5,
                     help='minimum number of reviews users should have')
 parser.add_argument('--min_item', type=int, default=50,
                     help='minimum number of reviews items should have')
@@ -44,7 +44,7 @@ parser.add_argument('--outer_lr', type=float, default=1e-3,
                     help='outer-loop bert learning rate')
 parser.add_argument('--min_outer_lr', type=float, default=1e-4,
                     help='min outer-loop bert learning rate')
-parser.add_argument('--loss_lr', type=float, default=1e-3,
+parser.add_argument('--loss_lr', type=float, default=1e-2,
                     help='outer-loop learning rate')
 parser.add_argument('--task_info_lr', type=float, default=1e-2,
                     help='outer-loop learning rate')
@@ -63,7 +63,7 @@ parser.add_argument('--lstm_hidden', type=int, default=32,
                     help='the number of lstm hidden state dimension')
 parser.add_argument('--lstm_num_layers', type=int, default=1,
                     help='the number of lstm layers')
-parser.add_argument('--lstm_input_size', type=int, default=32,
+parser.add_argument('--lstm_input_size', type=int, default=16,
                     help='input dimension of lstm')
 
 # adaptive loss network
@@ -120,7 +120,7 @@ parser.add_argument('--num_query_set', type=int, default=8,
                     help='number of query samples')
 parser.add_argument('--default_rating', type=int, default=0,
                     help='rating value for padding')
-parser.add_argument('--min_sub_window_size', type=int, default=15,
+parser.add_argument('--min_sub_window_size', type=int, default=2,
                     help=('minimum sequence during subsampling'))
 parser.add_argument('--use_label', type=boolean_string, default=True,
                     help='use label as task information or input rating data as task information')
@@ -136,6 +136,8 @@ parser.add_argument('--use_mlp', type=boolean_string, default=False,
                     help='use mlp adaptive loss')
 parser.add_argument('--use_lstm', type=boolean_string, default=True,
                     help='use lstm for task information')
+parser.add_argument('--use_step_loss', type=boolean_string, default=True,
+                    help='use step by step mlp mean loss')
 parser.add_argument('--use_shrinkage_loss', type=boolean_string, default=True,
                     help='use focal(shrinkage) loss')
 parser.add_argument('--use_mlp_mean', type=boolean_string, default=True,

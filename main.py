@@ -110,7 +110,7 @@ class MAML:
             self._loss_lr = args.loss_lr
             num_loss_dims = args.max_seq_len
             self.loss_network = MetaLossNetwork(
-                self._num_inner_steps, num_loss_dims, args.loss_num_layers).to(self.device)
+                self._num_inner_steps, num_loss_dims, args.loss_num_layers, use_step_loss=args.use_step_loss).to(self.device)
             self.loss_optimizer = optim.Adam(
                 self.loss_network.parameters(), lr=self._loss_lr, weight_decay=args.loss_weight_decay)
             self.loss_lr_scheduler = optim.lr_scheduler.\

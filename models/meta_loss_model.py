@@ -22,15 +22,23 @@ class MetaStepLossNetwork(nn.Module):
 
 
 class MetaLossNetwork(nn.Module):
-    def __init__(self, num_inner_steps, num_loss_hidden, num_loss_layers):
+    def __init__(self, num_inner_steps, num_loss_hidden, num_loss_layers, use_step_loss):
         super().__init__()
         self.loss_layers = nn.ModuleList()
-        for _ in range(num_inner_steps):
+        self.use_step_loss = use_step_loss
+        if self.use_step_loss:
+            for _ in range(num_inner_steps):
+                self.loss_layers.append(MetaStepLossNetwork(
+                    num_loss_hidden, num_loss_layers))
+        else:
             self.loss_layers.append(MetaStepLossNetwork(
                 num_loss_hidden, num_loss_layers))
 
     def forward(self, x, step):
-        x = self.loss_layers[-1](x)
+        if self.use_step_loss:
+            x = self.loss_layers[step](x)
+        else:
+            x = self.loss_layers[0](x)
         return x
 
 
