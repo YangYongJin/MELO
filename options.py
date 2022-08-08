@@ -17,6 +17,8 @@ parser.add_argument('--mode', type=str, default='ml-1m',
                     help='ml-1m or ml-10m or amazon or yelp')
 parser.add_argument('--test', default=False, action='store_true',
                     help='train or test')
+parser.add_argument('--test_best', default=True, action='store_false',
+                    help='test best or else')
 parser.add_argument('--test_baseline', default=False, action='store_true',
                     help='test baseline method(using mean of ratings)')
 parser.add_argument('--checkpoint_step', type=int, default=-1,

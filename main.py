@@ -595,7 +595,7 @@ class MAML:
                     f'Val MAE loss: {mae_loss:.4f} | '
                 )
                 wandb.log({"loss": rmse_loss})
-
+                self._save_model(best=False)
                 # Save the best model wrt valid rmse loss
                 if self.best_valid_rmse_loss > rmse_loss:
                     self.best_valid_rmse_loss = rmse_loss
@@ -687,12 +687,16 @@ class MAML:
             f'Test MAE loss: {mae_loss:.4f} | '
         )
 
-    def load(self, checkpoint_step):
+    def load(self, checkpoint_step, best=True):
         '''
             load meta paramters
         '''
-        target_path = os.path.join(
-            self._save_dir, f"{self.args.model}_{checkpoint_step}_best_{self.args.mode}_{self.args.model}.pt")
+        if best:
+            target_path = os.path.join(
+                self._save_dir, f"{self.args.model}_{checkpoint_step}_best_{self.args.mode}_{self.args.model}.pt")
+        else:
+            target_path = os.path.join(
+                self._save_dir, f"{self.args.model}_{checkpoint_step}_{self.args.mode}_{self.args.model}.pt")
         print("Loading checkpoint from", target_path)
         try:
             if torch.cuda.is_available():
@@ -722,12 +726,16 @@ class MAML:
             raise ValueError(
                 f'No checkpoint for iteration {checkpoint_step} found.')
 
-    def _save_model(self):
+    def _save_model(self, best=True):
         '''
             save meta paramters
         '''
-        save_path = os.path.join(
-            self._save_dir, f"{self.args.model}_{self._train_step}_best_{self.args.mode}_{self.args.model}.pt")
+        if best:
+            save_path = os.path.join(
+                self._save_dir, f"{self.args.model}_{self._train_step}_best_{self.args.mode}_{self.args.model}.pt")
+        else:
+            save_path = os.path.join(
+                self._save_dir, f"{self.args.model}_{self._train_step}_{self.args.mode}_{self.args.model}.pt")
         model_dict = {
             'meta_model': self.model.state_dict(),
             'meta_model_scheduler': self.meta_lr_scheduler.state_dict(),
@@ -779,7 +787,7 @@ def main(args):
 
     if args.checkpoint_step > -1:
         maml._train_step = args.checkpoint_step
-        maml.load(args.checkpoint_step)
+        maml.load(args.checkpoint_step, args.test_best)
     else:
         print('Checkpoint loading skipped.')
 
