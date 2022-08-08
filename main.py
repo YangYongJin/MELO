@@ -65,6 +65,9 @@ class MAML:
         # whether to use multi step loss
         self.use_multi_step = args.use_multi_step
 
+        # focal loss
+        self.use_focal_loss = args.use_focal_loss
+
         # meta hyperparameters
         self._num_inner_steps = args.num_inner_steps
         self._inner_lr = args.inner_lr
@@ -73,7 +76,6 @@ class MAML:
 
         # user normalized ratings (0, 1)
         self.normalize_loss = args.normalize_loss
-        self.use_shrinkage_loss = args.use_shrinkage_loss
 
         # inner loop optimizer
         # self.inner_loop_optimizer = GradientDescentLearningRule(
@@ -362,6 +364,9 @@ class MAML:
 
         return loss
 
+    def focal_loss(self, x, y, ord=3):
+        return torch.pow(torch.abs(y-x), ord)
+
     # inner loop optimization
     def _inner_loop(self, support_data, task_info, query_inputs, query_target_rating, train):
         """Computes the adapted network parameters via the MAML inner loop.
@@ -380,8 +385,11 @@ class MAML:
         """
 
         # loss functions
-        loss_fn = nn.MSELoss(reduction='none')
         mae_loss_fn = nn.L1Loss()
+        if self.use_focal_loss:
+            loss_fn = self.focal_loss
+        else:
+            loss_fn = nn.MSELoss(reduction='none')
 
         task_mse_losses = []
         task_mse_out_losses = []

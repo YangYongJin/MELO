@@ -138,7 +138,7 @@ parser.add_argument('--use_lstm', type=boolean_string, default=True,
                     help='use lstm for task information')
 parser.add_argument('--use_step_loss', type=boolean_string, default=True,
                     help='use step by step mlp mean loss')
-parser.add_argument('--use_shrinkage_loss', type=boolean_string, default=True,
+parser.add_argument('--use_focal_loss', type=boolean_string, default=False,
                     help='use focal(shrinkage) loss')
 parser.add_argument('--use_mlp_mean', type=boolean_string, default=True,
                     help='use lstm for task information')
