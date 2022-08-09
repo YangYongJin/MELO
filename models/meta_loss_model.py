@@ -68,7 +68,7 @@ class MetaTaskLstmNetwork(nn.Module):
         lstm_out, (hidden, c) = self.lstm(x, (h0, c0))
 
         if self.use_softmax:
-            return F.softmax(self.out_net(lstm_out).squeeze().masked_fill_(mask, float('-98765')), dim=0)
+            return F.softmax(self.out_net(lstm_out).squeeze().masked_fill_(mask, float('-98765')), dim=1)
         else:
             return torch.abs(self.out_net(lstm_out).squeeze())
 
@@ -87,6 +87,6 @@ class MetaTaskMLPNetwork(nn.Module):
     def forward(self, x):
         mask = (x == 0)
         if self.use_softmax:
-            return F.softmax(self.mlp(x).squeeze().masked_fill_(mask, float('-98765')), dim=0)
+            return F.softmax(self.mlp(x).squeeze().masked_fill_(mask, float('-98765')), dim=1)
         else:
             return torch.abs(self.mlp(x).squeeze())

@@ -50,7 +50,7 @@ parser.add_argument('--loss_lr', type=float, default=1e-2,
                     help='outer-loop learning rate')
 parser.add_argument('--task_info_lr', type=float, default=1e-2,
                     help='outer-loop learning rate')
-parser.add_argument('--lstm_lr', type=float, default=1e-1,
+parser.add_argument('--lstm_lr', type=float, default=1e-3,
                     help='lstm learning rate')
 parser.add_argument('--learn_lr', type=float, default=1e-3,
                     help='learning rate of learning rate')
