@@ -142,7 +142,7 @@ class MAML:
             self.task_lstm_optimizer = optim.Adam(
                 self.task_lstm_network.parameters(), lr=self._lstm_lr)
             self.lstm_lr_scheduler = optim.lr_scheduler.CosineAnnealingLR(
-                self.task_lstm_optimizer, T_max=args.num_train_iterations, eta_min=args.min_outer_lr)
+                self.task_lstm_optimizer, T_max=args.num_train_iterations, eta_min=1e-2)
 
         self.use_mlp_mean = args.use_mlp_mean
 
@@ -264,7 +264,7 @@ class MAML:
             print(total_norm)
 
             self.task_lstm_optimizer.step()
-            # self.lstm_lr_scheduler.step()
+            self.lstm_lr_scheduler.step()
         if self.use_adaptive_loss_weight:
             self.task_info_optimizer.step()
             # self.task_info_lr_scheduler.step()

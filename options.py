@@ -74,7 +74,7 @@ parser.add_argument('--loss_num_layers', type=int, default=1,
 
 # choice of model
 parser.add_argument('--model', type=str, default='bert4rec',
-                    help='model choice - sasrec, bert4rec, narm, gru4rec')
+                    help='model choice - sasrec, bert4rec, narm, gru4rec, ncf')
 
 
 # about transformer model
