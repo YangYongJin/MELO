@@ -30,6 +30,8 @@ parser.add_argument('--num_test_data', type=int, default=1000,
                     help='the number of test data')
 parser.add_argument('--min_sequence', type=int, default=5,
                     help='minimum number of reviews users should have')
+parser.add_argument('--use_random_sequence_length', type=boolean_string, default=False,
+                    help='make sequence length random number between min sequence and max_len')
 parser.add_argument('--min_item', type=int, default=50,
                     help='minimum number of reviews items should have')
 parser.add_argument('--random_seed', type=int, default=222,

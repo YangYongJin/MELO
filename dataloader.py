@@ -39,6 +39,7 @@ class DataLoader():
 
         self.random_seed = args.random_seed
         self.num_query_set = args.num_query_set
+        self.min_seq_len = args.min_sequence
 
         self.df, self.umap, self.smap = self.preprocessing(
             args.data_path, args.min_sequence, args.min_item, args.mode)
@@ -50,6 +51,9 @@ class DataLoader():
         self.total_data_num = len(self.df)
 
         self.default_rating = args.default_rating
+
+        # random sequence length option
+        self.random_sequence_length = args.use_random_sequence_length
 
         self.batch_idxs = []
         self.batch_idx = 0
@@ -237,7 +241,7 @@ class DataLoader():
         valid_data = used_df[~random_selection]
         return train_data, valid_data, test_data
 
-    def cut_sequences(self, values, rand_idx):
+    def cut_sequences(self, values, seq_len, rand_start_idx):
         '''
         cut sequences
         Args:
@@ -246,10 +250,8 @@ class DataLoader():
         return:
             cut sequence
         '''
-        if len(values) <= self.max_sequence_length:
-            return values[:]
-        else:
-            return values[rand_idx: rand_idx+self.max_sequence_length]
+
+        return values[rand_start_idx:rand_start_idx+seq_len]
 
     def get_sliced_sequences(self, product_ids, ratings, mode):
         '''
@@ -261,8 +263,15 @@ class DataLoader():
             len(product_ids) + 1 - cut_num)
         if mode != 'train':
             rand_idx = len(product_ids) - cut_num
-        ratings = self.cut_sequences(ratings, rand_idx)
-        product_ids = self.cut_sequences(product_ids, rand_idx)
+
+        if self.random_sequence_length:
+            seq_len = np.random.randint(self.min_seq_len, cut_num+1)
+        else:
+            seq_len = cut_num
+        rand_start_idx = rand_idx + np.random.randint(cut_num-seq_len+1)
+
+        ratings = self.cut_sequences(ratings, seq_len, rand_start_idx)
+        product_ids = self.cut_sequences(product_ids, seq_len, rand_start_idx)
         return ratings, product_ids
 
     def subsample(self, values, rand_idxs):
