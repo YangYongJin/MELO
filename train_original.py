@@ -3,6 +3,8 @@ from dataloader import DataLoader
 from options import args
 import wandb
 
+from models.meta_loss_model import MetaTaskLstmNetwork
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -49,21 +51,21 @@ class Pretrain:
         self._lr = args.pretraining_lr
         self.optimizer = optim.Adam(self.model.parameters(), lr=self._lr)
 
-        self.loss_fn = nn.MSELoss()
+        self.loss_fn = nn.MSELoss(reduction='none')
         self.mae_loss_fn = nn.L1Loss()
 
+        self.use_lstm = args.use_learned_loss_baseline
+
         # # use lstm as task information
-        # if self.use_lstm:
-        #     self._lstm_lr = args.lstm_lr
-        #     lstm_hidden = args.lstm_hidden
-        #     if lstm_hidden < num_loss_dims:
-        #         lstm_hidden = num_loss_dims+1
-        #     self.task_lstm_network = MetaTaskLstmNetwork(
-        #         input_size=args.lstm_input_size, lstm_hidden=lstm_hidden, num_lstm_layers=args.lstm_num_layers, lstm_out=0, device=self.device, use_softmax=args.use_softmax).to(self.device)
-        #     self.task_lstm_optimizer = optim.Adam(
-        #         self.task_lstm_network.parameters(), lr=self._lstm_lr)
-        #     self.lstm_lr_scheduler = optim.lr_scheduler.CosineAnnealingLR(
-        #         self.task_lstm_optimizer, T_max=args.num_train_iterations, eta_min=1e-2)
+        if self.use_lstm:
+            self._lstm_lr = args.lstm_lr
+            lstm_hidden = args.lstm_hidden
+            self.task_lstm_network = MetaTaskLstmNetwork(
+                input_size=args.lstm_input_size, lstm_hidden=lstm_hidden, num_lstm_layers=args.lstm_num_layers, lstm_out=0, device=self.device, use_softmax=args.use_softmax).to(self.device)
+            self.task_lstm_optimizer = optim.Adam(
+                self.task_lstm_network.parameters(), lr=self._lstm_lr)
+            self.lstm_lr_scheduler = optim.lr_scheduler.CosineAnnealingLR(
+                self.task_lstm_optimizer, T_max=args.pretrain_epochs, eta_min=1e-2)
 
         self.best_valid_rmse_loss = 987654321
         self.best_step = 0
@@ -105,6 +107,8 @@ class Pretrain:
                     self.device),  product_history_ratings.to(self.device))
             target_rating = target_rating.to(self.device)
             self.optimizer.zero_grad()
+            if self.use_lstm:
+                self.task_lstm_optimizer.zero_grad()
 
             # forward prop
             outputs = self.model(
@@ -116,15 +120,34 @@ class Pretrain:
             # compute loss
             if self.normalize_loss:
                 loss = self.loss_fn(outputs*mask, gt*mask/5.0)
-                mse_loss = self.loss_fn(
-                    outputs[:, -1:].clone().detach()*5, target_rating)
+                if self.use_lstm:
+                    task_input = torch.cat(
+                        (x_inputs[3], target_rating), dim=1)
+                    task_info = self.task_lstm_network(
+                        task_input).squeeze()
+                    adapt_loss = loss * task_info * mask
+                    loss = adapt_loss.sum()/torch.count_nonzero(adapt_loss)
+                else:
+                    loss = loss.sum()/torch.count_nonzero(adapt_loss)
+                mse_loss = torch.mean(self.loss_fn(
+                    outputs[:, -1:].clone().detach()*5, target_rating))
                 mae_loss = self.mae_loss_fn(
                     outputs[:, -1:].clone().detach()*5, target_rating)
                 rmse_loss = torch.sqrt(mse_loss)
+
             else:
                 loss = self.loss_fn(outputs*mask, gt*mask)
-                mse_loss = self.loss_fn(
-                    outputs[:, -1:].clone().detach(), target_rating)
+                if self.use_lstm:
+                    task_input = torch.cat(
+                        (x_inputs[3], target_rating), dim=1)
+                    task_info = self.task_lstm_network(
+                        task_input).squeeze()
+                    adapt_loss = loss * task_info * mask
+                    loss = adapt_loss.sum()/torch.count_nonzero(adapt_loss)
+                else:
+                    loss = loss.sum()/torch.count_nonzero(adapt_loss)
+                mse_loss = torch.mean(self.loss_fn(
+                    outputs[:, -1:].clone().detach(), target_rating))
                 mae_loss = self.mae_loss_fn(
                     outputs[:, -1:].clone().detach(), target_rating)
                 rmse_loss = torch.sqrt(mse_loss)
@@ -133,6 +156,9 @@ class Pretrain:
             if train:
                 loss.backward()
                 self.optimizer.step()
+                if self.use_lstm:
+                    self.task_lstm_optimizer.step()
+                    self.lstm_lr_scheduler.step()
             mse_losses.append(mse_loss.item())
             mae_losses.append(mae_loss.item())
             rmse_losses.append(rmse_loss.item())

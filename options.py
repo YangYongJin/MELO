@@ -177,6 +177,8 @@ parser.add_argument('--load_pretrained', type=boolean_string, default=False,
                     help='load pretrained  or not')
 parser.add_argument('--save_pretrained', type=boolean_string, default=False,
                     help='save embedding or whole model')
+parser.add_argument('--use_learned_loss_baseline', type=boolean_string, default=False,
+                    help='use learned loss for baseline')
 parser.add_argument('--pretrain_log_dir', type=str, default='./log_pretrained',
                     help='directory to save to or load from pretrained')
 
