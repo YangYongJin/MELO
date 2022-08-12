@@ -52,6 +52,19 @@ class Pretrain:
         self.loss_fn = nn.MSELoss()
         self.mae_loss_fn = nn.L1Loss()
 
+        # # use lstm as task information
+        # if self.use_lstm:
+        #     self._lstm_lr = args.lstm_lr
+        #     lstm_hidden = args.lstm_hidden
+        #     if lstm_hidden < num_loss_dims:
+        #         lstm_hidden = num_loss_dims+1
+        #     self.task_lstm_network = MetaTaskLstmNetwork(
+        #         input_size=args.lstm_input_size, lstm_hidden=lstm_hidden, num_lstm_layers=args.lstm_num_layers, lstm_out=0, device=self.device, use_softmax=args.use_softmax).to(self.device)
+        #     self.task_lstm_optimizer = optim.Adam(
+        #         self.task_lstm_network.parameters(), lr=self._lstm_lr)
+        #     self.lstm_lr_scheduler = optim.lr_scheduler.CosineAnnealingLR(
+        #         self.task_lstm_optimizer, T_max=args.num_train_iterations, eta_min=1e-2)
+
         self.best_valid_rmse_loss = 987654321
         self.best_step = 0
 

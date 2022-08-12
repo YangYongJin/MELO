@@ -135,8 +135,6 @@ class MAML:
         if self.use_lstm:
             self._lstm_lr = args.lstm_lr
             lstm_hidden = args.lstm_hidden
-            if lstm_hidden < num_loss_dims:
-                lstm_hidden = num_loss_dims+1
             self.task_lstm_network = MetaTaskLstmNetwork(
                 input_size=args.lstm_input_size, lstm_hidden=lstm_hidden, num_lstm_layers=args.lstm_num_layers, lstm_out=0, device=self.device, use_softmax=args.use_softmax).to(self.device)
             self.task_lstm_optimizer = optim.Adam(
