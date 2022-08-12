@@ -145,7 +145,7 @@ class Pretrain:
                     adapt_loss = loss * task_info * mask
                     loss = adapt_loss.sum()/torch.count_nonzero(adapt_loss)
                 else:
-                    loss = loss.sum()/torch.count_nonzero(adapt_loss)
+                    loss = loss.sum()/torch.count_nonzero(loss)
                 mse_loss = torch.mean(self.loss_fn(
                     outputs[:, -1:].clone().detach(), target_rating))
                 mae_loss = self.mae_loss_fn(
