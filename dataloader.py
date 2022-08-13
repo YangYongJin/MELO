@@ -262,7 +262,7 @@ class DataLoader():
         rand_idx = np.random.randint(
             len(product_ids) + 1 - cut_num)
 
-        if mode == 'test':
+        if mode != 'train':
             rand_idx = len(product_ids) - cut_num
             # seq_len = cut_num
 
