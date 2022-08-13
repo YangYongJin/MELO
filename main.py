@@ -78,8 +78,6 @@ class MAML:
         self.normalize_loss = args.normalize_loss
 
         # inner loop optimizer
-        # self.inner_loop_optimizer = GradientDescentLearningRule(
-        #     self.device, learning_rate=self._inner_lr)
         self._use_learnable_params = args.use_learnable_params
         self.inner_loop_optimizer = LSLRGradientDescentLearningRule(
             device=self.device, total_num_inner_loop_steps=self._num_inner_steps, use_learnable_learning_rates=self._use_learnable_params, init_learning_rate=self._inner_lr)
