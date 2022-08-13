@@ -1,4 +1,3 @@
-from multiprocessing import reduction
 from models import model_factory
 from models.meta_loss_model import MetaLossNetwork, MetaTaskMLPNetwork, MetaTaskLstmNetwork
 from inner_loop_optimizers import LSLRGradientDescentLearningRule
@@ -68,10 +67,9 @@ class MAML:
         # focal loss
         self.use_focal_loss = args.use_focal_loss
 
-        # meta hyperparameters
+        # hyperparameters
         self._num_inner_steps = args.num_inner_steps
         self._inner_lr = args.inner_lr
-        # for meta model
         self._outer_lr = args.outer_lr
 
         # user normalized ratings (0, 1)
@@ -83,29 +81,33 @@ class MAML:
             device=self.device, total_num_inner_loop_steps=self._num_inner_steps, use_learnable_learning_rates=self._use_learnable_params, init_learning_rate=self._inner_lr)
         self.inner_loop_optimizer.initialise(
             names_weights_dict=self.get_inner_loop_parameter_dict(params=self.model.named_parameters()))
+
+        # optimizer for inner loop lr
         if self._use_learnable_params:
             self._learning_lr = args.learn_lr
             self.lr_optimizer = optim.Adam(
                 self.inner_loop_optimizer.parameters(), lr=self._learning_lr)
 
-        # meta optimizer
+        # meta model optimizer
         self.meta_optimizer = optim.Adam(
             self.model.parameters(), lr=self._outer_lr)
 
         # meta learning rate scheduler
         self.meta_lr_scheduler = optim.lr_scheduler.CosineAnnealingLR(
             self.meta_optimizer, T_max=args.num_train_iterations, eta_min=args.min_outer_lr)
+
         # current epoch
         self._train_step = 0
 
-        # options - using adaptive loss and using weight of adaptive loss
+        # Adaptive Loss
         self.use_adaptive_loss = args.use_adaptive_loss
         self.use_adaptive_loss_weight = (
             args.use_mlp and self.use_adaptive_loss)
         self.use_lstm = (
             args.use_lstm and self.use_adaptive_loss)
         num_loss_dims = None
-        # settings for adaptive loss
+
+        # mlp mean loss network
         if self.use_adaptive_loss:
             self._loss_lr = args.loss_lr
             num_loss_dims = args.max_seq_len
@@ -117,7 +119,7 @@ class MAML:
                 MultiStepLR(self.loss_optimizer, milestones=[
                             500, 800, 950], gamma=0.7)
 
-         # settings for adaptive loss weight
+        # mlp loss network
         if self.use_adaptive_loss_weight:
             num_loss_weight_dims = 5
             self._task_info_lr = args.task_info_lr
@@ -129,7 +131,7 @@ class MAML:
                 MultiStepLR(self.task_info_optimizer, milestones=[
                             500, 800, 950], gamma=0.7)
 
-        # use lstm as task information
+        # lstm loss network
         if self.use_lstm:
             self._lstm_lr = args.lstm_lr
             lstm_hidden = args.lstm_hidden
@@ -203,11 +205,6 @@ class MAML:
                                     allow_unused=True, create_graph=use_second_order)
         names_grads_copy = dict(zip(names_weights_copy.keys(), grads))
 
-        # for key, grad in names_grads_copy.items():
-        #     if grad is None:
-        #         print('Grads not found for inner loop parameter', key)
-        #     names_grads_copy[key] = names_grads_copy[key].sum(dim=0)
-
         names_weights_copy = self.inner_loop_optimizer.update_params(names_weights_dict=names_weights_copy,
                                                                      names_grads_wrt_params_dict=names_grads_copy, num_step=step)
 
@@ -247,9 +244,8 @@ class MAML:
 
         self.meta_optimizer.step()
         self.meta_lr_scheduler.step()
-        if self.use_adaptive_loss:
+        if self.use_adaptive_loss and self.use_mlp_mean:
             self.loss_optimizer.step()
-            # self.loss_lr_scheduler.step()
         if self.use_lstm:
             total_norm = 0.0
             for p in self.task_lstm_network.parameters():
@@ -295,6 +291,8 @@ class MAML:
 
         # forward propagate on query data
         outputs = self.model(query_inputs, params=names_weights_copy)
+
+        # labels
         gt = torch.cat(
             (query_inputs[3], query_target_rating), dim=1)
         mask = (gt != 0)

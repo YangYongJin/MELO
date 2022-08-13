@@ -262,15 +262,15 @@ class DataLoader():
         rand_idx = np.random.randint(
             len(product_ids) + 1 - cut_num)
 
+        if mode == 'test':
+            rand_idx = len(product_ids) - cut_num
+            # seq_len = cut_num
+
         if self.random_sequence_length:
             seq_len = np.random.randint(self.min_seq_len, cut_num+1)
         else:
             seq_len = cut_num
         rand_start_idx = rand_idx + np.random.randint(cut_num-seq_len+1)
-
-        if mode == 'test':
-            rand_start_idx = len(product_ids) - cut_num
-            seq_len = cut_num
 
         ratings = self.cut_sequences(ratings, seq_len, rand_start_idx)
         product_ids = self.cut_sequences(product_ids, seq_len, rand_start_idx)
