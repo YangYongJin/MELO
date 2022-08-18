@@ -43,6 +43,7 @@ class DataLoader():
 
         self.df, self.umap, self.smap = self.preprocessing(
             args.data_path, args.min_sequence, args.min_item, args.mode)
+
         self.num_samples = args.num_samples
         self.train_set, self.valid_set, self.test_set = self.split_data(
             self.df, args.num_test_data)
@@ -57,11 +58,11 @@ class DataLoader():
 
         self.batch_idxs = []
         self.batch_idx = 0
+
         # task information:
         self.task_info_rating_mean = args.task_info_rating_mean
         self.task_info_rating_std = args.task_info_rating_std
-        self.task_info_num_samples = args.task_info_num_samples
-        self.task_info_rating_distribution = args.task_info_rating_distribution
+        self.task_info_labels = args.task_info_labels
 
         # for pretraining (learn sigle bert)
         if pretraining and args.pretraining_batch_size != None:
@@ -418,7 +419,7 @@ class DataLoader():
             rating_mean: mean value of ratings
             rating_std: std value of ratings
         '''
-        total_ratings = (ratings > 0).sum()
+        # total_ratings = (ratings > 0).sum()
         num_1 = int((ratings == 1).sum().item())
         num_2 = int((ratings == 2).sum().item())
         num_3 = int((ratings == 3).sum().item())
@@ -428,12 +429,6 @@ class DataLoader():
         rating_info = num_1 * [1] + num_2 * [2] + \
             num_3*[3] + num_4*[4] + num_5 * [5]
 
-        normalized_num_1 = num_1 / total_ratings
-        normalized_num_2 = num_2 / total_ratings
-        normalized_num_3 = num_3 / total_ratings
-        normalized_num_4 = num_4 / total_ratings
-        normalized_num_5 = num_5 / total_ratings
-
         rating_info = torch.FloatTensor(rating_info)
 
         if normalized:
@@ -442,14 +437,15 @@ class DataLoader():
         else:
             rating_mean = rating_info.mean()
             rating_std = rating_info.std()
-        # + self.task_info_rating_distribution * [
         rating_info = self.task_info_rating_mean * \
             [rating_mean] + self.task_info_rating_std*[rating_std]
-        # normalized_num_1, normalized_num_2, normalized_num_3, normalized_num_4, normalized_num_5]
+
         rating_info = torch.stack(rating_info)
         rating_info = rating_info.repeat(
             len(ratings), self.max_sequence_length, 1)
-        rating_info = torch.cat((rating_info, ratings.unsqueeze(2)/5.0), dim=2)
+        if self.task_info_labels:
+            rating_info = torch.cat(
+                (rating_info, ratings.unsqueeze(2)/5.0), dim=2)
         return rating_info
 
     def generate_task(self, mode="train", batch_size=20, normalized=False, use_label=True):
@@ -604,14 +600,3 @@ class SequenceDataset(data.Dataset):
             self.num_queries, 1)
 
         return (user_id, product_history, target_product_id,  product_history_ratings), target_product_rating
-
-
-# dataloader = DataLoader(args, pretraining=False)
-# tasks = dataloader.generate_task(mode="train", batch_size=25, normalized=True)
-# support, query, task = tasks[0]
-# support_user_id, support_product_history, support_target_product, support_rating_history, support_target_rating = support
-# query_user_id, query_product_history, query_target_product, query_rating_history, query_target_rating = query
-# print(query_product_history)
-# print(support_target_rating)
-# print(query_rating_history)
-# print(query_target_rating)

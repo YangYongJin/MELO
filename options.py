@@ -158,10 +158,10 @@ parser.add_argument('--task_info_rating_mean', type=boolean_string, default=True
                     help='use mean rating as task information')
 parser.add_argument('--task_info_rating_std', type=boolean_string, default=True,
                     help='use std of rating as task information')
-parser.add_argument('--task_info_num_samples', type=boolean_string, default=True,
+parser.add_argument('--task_info_labels', type=boolean_string, default=True,
                     help='use the number of samples as task information')
-parser.add_argument('--task_info_rating_distribution', type=boolean_string, default=True,
-                    help='use the distribution of rating as task information')
+parser.add_argument('--task_info_predictions', type=boolean_string, default=True,
+                    help='use the number of samples as task information')
 
 
 # pretraining options

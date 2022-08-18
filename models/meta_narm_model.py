@@ -24,7 +24,7 @@ class MetaNARM(nn.Module):
         self.device = args.device
         self.embedding_dim = args.narm_embedding_dim
         self.embedding = MetaBERTEmbedding(
-            vocab_size=vocab_size,  embed_size=self.embedding_dim, max_len=max_len, dropout=dropout)
+            vocab_size=vocab_size,  embed_size=self.embedding_dim, max_len=max_len, dropout=dropout, needs_position=False)
         self.gru = MetaGRUModel(
             self.embedding_dim, self.hidden_size, self.n_layers, self.hidden_size)
         self.a_1 = MetaLinearLayer(

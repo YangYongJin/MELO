@@ -9,7 +9,6 @@ import wandb
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import copy
 import os
 import numpy as np
 from tqdm import tqdm
@@ -61,10 +60,10 @@ class MAML:
         elif args.load_pretrained:
             self._load_pretrained()
 
-        # whether to use multi step loss
+        # MAML++ multi-step updates
         self.use_multi_step = args.use_multi_step
 
-        # focal loss
+        # use focal loss as inner loop loss function
         self.use_focal_loss = args.use_focal_loss
 
         # hyperparameters
@@ -72,10 +71,10 @@ class MAML:
         self._inner_lr = args.inner_lr
         self._outer_lr = args.outer_lr
 
-        # user normalized ratings (0, 1)
+        # normalize user ratings range from 0 to 1
         self.normalize_loss = args.normalize_loss
 
-        # inner loop optimizer
+        # inner loop optimizer - use learnable inner loop learning rates
         self._use_learnable_params = args.use_learnable_params
         self.inner_loop_optimizer = LSLRGradientDescentLearningRule(
             device=self.device, total_num_inner_loop_steps=self._num_inner_steps, use_learnable_learning_rates=self._use_learnable_params, init_learning_rate=self._inner_lr)
@@ -92,14 +91,14 @@ class MAML:
         self.meta_optimizer = optim.Adam(
             self.model.parameters(), lr=self._outer_lr)
 
-        # meta learning rate scheduler
+        # meta learning rate scheduler (cosine annealing scheduler)
         self.meta_lr_scheduler = optim.lr_scheduler.CosineAnnealingLR(
             self.meta_optimizer, T_max=args.num_train_iterations, eta_min=args.min_outer_lr)
 
         # current epoch
         self._train_step = 0
 
-        # Adaptive Loss
+        # Options for Adaptive Wighted Loss
         self.use_adaptive_loss = args.use_adaptive_loss
         self.use_adaptive_loss_weight = (
             args.use_mlp and self.use_adaptive_loss)
@@ -107,7 +106,7 @@ class MAML:
             args.use_lstm and self.use_adaptive_loss)
         num_loss_dims = None
 
-        # mlp mean loss network
+        # mlp mean loss network - aggregate item losses using mlp layers
         if self.use_adaptive_loss:
             self._loss_lr = args.loss_lr
             num_loss_dims = args.max_seq_len
@@ -117,11 +116,15 @@ class MAML:
                 self.loss_network.parameters(), lr=self._loss_lr, weight_decay=args.loss_weight_decay)
             self.loss_lr_scheduler = optim.lr_scheduler.\
                 MultiStepLR(self.loss_optimizer, milestones=[
-                            500, 800, 950], gamma=0.7)
+                            500, 1000, 1500], gamma=0.7)
 
-        # mlp loss network
+        # STATS network
+        # loss, mean, std, labels, and predictions are included for statistical information
         if self.use_adaptive_loss_weight:
-            num_loss_weight_dims = 5
+            self.task_info_predictions = args.task_info_predictions
+            self.task_info_loss = args.task_info_loss
+            num_loss_weight_dims = 1*args.task_info_loss + 1*args.task_info_rating_mean+1 * \
+                args.task_info_rating_std+1*args.task_info_predictions+1*args.task_info_labels
             self._task_info_lr = args.task_info_lr
             self.task_info_network = MetaTaskMLPNetwork(
                 num_loss_weight_dims, use_softmax=args.use_softmax).to(self.device)
@@ -129,7 +132,7 @@ class MAML:
                 self.task_info_network.parameters(), lr=self._task_info_lr)
             self.task_info_lr_scheduler = optim.lr_scheduler.\
                 MultiStepLR(self.task_info_optimizer, milestones=[
-                            500, 800, 950], gamma=0.7)
+                            500, 1000, 1500], gamma=0.7)
 
         # lstm loss network
         if self.use_lstm:
@@ -232,28 +235,14 @@ class MAML:
         :param mse_loss: meta mse loss
         """
         mse_loss.backward()
-        total_norm = 0.0
-        for p in self.model.parameters():
-            if p.requires_grad:
-                param_norm = p.grad.detach().data.norm(2)
-                total_norm += param_norm.item() ** 2
-        total_norm = total_norm ** 0.5
         torch.nn.utils.clip_grad_norm_(
             self.model.parameters(), max_norm=5.0)
-        print(total_norm)
 
         self.meta_optimizer.step()
         self.meta_lr_scheduler.step()
         if self.use_adaptive_loss and self.use_mlp_mean:
             self.loss_optimizer.step()
         if self.use_lstm:
-            total_norm = 0.0
-            for p in self.task_lstm_network.parameters():
-                if p.requires_grad:
-                    param_norm = p.grad.detach().data.norm(2)
-                    total_norm += param_norm.item() ** 2
-            total_norm = total_norm ** 0.5
-            print(total_norm)
 
             self.task_lstm_optimizer.step()
             self.lstm_lr_scheduler.step()
@@ -261,13 +250,6 @@ class MAML:
             self.task_info_optimizer.step()
             # self.task_info_lr_scheduler.step()
         if self._use_learnable_params:
-            total_norm = 0.0
-            for p in self.inner_loop_optimizer.parameters():
-                if p.requires_grad:
-                    param_norm = p.grad.detach().data.norm(2)
-                    total_norm += param_norm.item() ** 2
-            total_norm = total_norm ** 0.5
-            print(total_norm)
             self.lr_optimizer.step()
 
         # forward on query data
@@ -328,6 +310,7 @@ class MAML:
             loss: adaptive loss
         '''
 
+        # use lstm state encoder
         if self.use_lstm:
             task_input = torch.cat(
                 (inputs[3], target_rating), dim=1)
@@ -341,9 +324,14 @@ class MAML:
                 loss = adapt_loss.sum()/torch.count_nonzero(adapt_loss)
 
         else:
+            # use mlp state encoder
+            if self.task_info_loss:
+                task_info_adapt = torch.cat(
+                    (task_info, loss.unsqueeze(2)), dim=2)
+            else:
+                task_info_adapt = task_info
             # task_info_adapt = (task_info-task_info.mean()) / \
             #     (task_info.std() + 1e-12)
-            task_info_adapt = torch.cat((task_info, loss.unsqueeze(2)), dim=2)
             if self.use_adaptive_loss_weight:
                 weight = self.task_info_network(task_info_adapt)
                 adapt_loss = weight * loss * mask
@@ -359,6 +347,9 @@ class MAML:
         return loss
 
     def focal_loss(self, x, y, ord=3):
+        """
+            focal loss for regression 
+        """
         return torch.pow(torch.abs(y-x), ord)
 
     # inner loop optimization
@@ -380,6 +371,8 @@ class MAML:
 
         # loss functions
         mae_loss_fn = nn.L1Loss()
+
+        # option for focal loss
         if self.use_focal_loss:
             loss_fn = self.focal_loss
         else:
@@ -413,19 +406,21 @@ class MAML:
             gt = torch.cat(
                 (inputs[3], target_rating), dim=1)
             mask = (gt != 0)
-            # compute loss
+            # compute mse loss
             if self.normalize_loss:
                 loss = loss_fn(outputs*mask, gt*mask/5.0)
             else:
                 loss = loss_fn(outputs*mask, gt*mask)
 
-            # adaptive loss
+            # adaptive weighted loss
             if self.use_adaptive_loss:
-                task_info_f = torch.cat(
-                    (task_info, outputs.unsqueeze(2)), dim=2)
+                if self.task_info_predictions:
+                    task_info_f = torch.cat(
+                        (task_info, outputs.unsqueeze(2)), dim=2)
                 loss = self.compute_adaptive_loss(
                     loss, inputs, target_rating, step, mask, task_info_f)
 
+            # normal mse loss
             else:
                 loss = loss.sum()/mask.sum()
 

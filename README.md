@@ -1,8 +1,13 @@
-# MELO - MEta-learning-based Sequential Recommendation Framework with Learned LOss Network for Imbalanced Cold-Start Recommendation 
+# MELO - Meta-Learning with Adaptive Weighted Loss for Imbalanced Cold-Start Recommendation
 
-Melo solves user cold start problem of sequential recommendation using meta learning with adaptive loss
 
-# References (Codes and Papers)
+A replication of the paper "Meta-Learning with Adaptive Weighted Loss for
+Imbalanced Cold-Start Recommendation"
+
+## Introduction
+
+
+## References (Codes and Papers)
 
 > **BERT4REC model reference code: https://github.com/jaywonchung/BERT4Rec-VAE-Pytorch**
 
@@ -25,7 +30,7 @@ Melo solves user cold start problem of sequential recommendation using meta lear
 
 
 
-# Dependencies  
+## Dependencies  
 * pytorch 
 * tqdm 
 * tensorboard
@@ -36,7 +41,23 @@ Melo solves user cold start problem of sequential recommendation using meta lear
   
 <br/>
 
-# Usage
+## Datasets 
+
+
+
+<br/>
+
+## Code Structures
+"models" folder                      : Baseline Models(Bert4rec, Narm, Sas4rec, Gru4rec)<br/> 
+"dataloader" file                    : Data Preprocessing and Task Generation<br/>
+"main.py" file                       : MAML with Task Adaptive Loss Implementation <br/>
+"inner_loop_optimizers.py" file      : Inner Loop Optimizers for MAML++<br/>
+"options.py"                         : Adjust Multiple Options(Hyperparmaters, Task Information, etc)<br/>
+"train_original.py"                  : Training Single Baseline Model<br/>
+
+
+
+# Running an experiment
 <br/>
 Please read <strong>options.py</strong> carefully to adjust multiple options
 <br/>
@@ -82,13 +103,3 @@ python train_original.py
 ```bash 
 python train_original.py --checkpoint_step=n --test
 ```
-
-<br/>
-
-## Files
-"models" folder                      : Baseline Models(Bert4rec, Narm, Sas4rec, Gru4rec)<br/> 
-"dataloader" file                    : Data Preprocessing and Task Generation<br/>
-"main.py" file                       : MAML with Task Adaptive Loss Implementation <br/>
-"inner_loop_optimizers.py" file      : Inner Loop Optimizers for MAML++<br/>
-"options.py"                         : Adjust Multiple Options(Hyperparmaters, Task Information, etc)<br/>
-"train_original.py"                  : Training Single Baseline Model<br/>

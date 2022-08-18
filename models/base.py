@@ -143,7 +143,7 @@ class MetaBERTEmbedding(nn.Module):
         sum of all these features are output of BERTEmbedding
     """
 
-    def __init__(self, vocab_size, embed_size, max_len, dropout=0.1):
+    def __init__(self, vocab_size, embed_size, max_len, dropout=0.1, needs_position=True):
         """
         :param vocab_size: total vocab size
         :param embed_size: embedding size of token embedding
@@ -152,9 +152,10 @@ class MetaBERTEmbedding(nn.Module):
         super().__init__()
         self.embedding = MetaEmbedding(
             num_embeddings=vocab_size, embedding_dim=embed_size)
-
-        self.position = MetaPositionalEmbedding(
-            max_len=max_len, d_model=embed_size)
+        self.needs_position = needs_position
+        if self.needs_position:
+            self.position = MetaPositionalEmbedding(
+                max_len=max_len, d_model=embed_size)
 
         self.dropout = nn.Dropout(p=dropout)
 
@@ -164,19 +165,19 @@ class MetaBERTEmbedding(nn.Module):
         if params is not None:
             params = extract_top_level_dict(current_dict=params)
             embedding_params = params['embedding']
-            position_params = params['position']
+            if self.needs_position:
+                position_params = params['position']
         else:
             embedding_params = None
-            position_params = None
+            if self.needs_position:
+                position_params = None
         product_his = torch.cat((product_history, target_product_id), dim=1)
-        x = self.embedding(product_his, params=embedding_params) + \
-            self.position(product_his, params=position_params)
+        x = self.embedding(product_his, params=embedding_params)
+
+        if self.needs_position:
+            x += self.position(product_his, params=position_params)
         B, T = product_history_ratings.shape
 
-        # target_info = self.embedding(
-        #     target_product_id, params=embedding_params).view(B, 1, -1)
-        # x = x*product_history_ratings.view(B, T, 1)
-        # x = torch.cat([x, target_info], dim=1)
         return self.dropout(x)
 
 
