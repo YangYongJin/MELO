@@ -135,9 +135,6 @@ class MetaBERT(nn.Module):
     def __init__(self, args):
         super().__init__()
 
-        # fix_random_seed_as(args.model_init_seed)
-        # self.init_weights()
-
         max_len = args.max_seq_len-1
         num_items = args.num_items
         # num_users = args.num_users
@@ -163,7 +160,6 @@ class MetaBERT(nn.Module):
     def forward(self, inputs, params=None):
         x = torch.cat((inputs[1], inputs[2]), dim=1)
         mask = (x > 0).unsqueeze(1).repeat(1, x.size(1), 1).unsqueeze(1)
-        # mask = None
         param_dict = {}
         if params is not None:
             param_dict = extract_top_level_dict(current_dict=params)
@@ -196,9 +192,6 @@ class MetaBERT4Rec(nn.Module):
         self.args = args
         self.bert = MetaBERT(args)
         self.dim_reduct = MetaLinearLayer(self.bert.hidden, 1)
-        # self.out1 = MetaLinearLayer(16*(args.max_seq_len), 128)
-        # self.out2 = MetaLinearLayer(128, 1)
-        # self.relu = nn.ReLU()
 
     def forward(self, inputs, params=None):
         if params is not None:
@@ -206,24 +199,15 @@ class MetaBERT4Rec(nn.Module):
             param_dict = extract_top_level_dict(current_dict=params)
             bert_params = param_dict['bert']
             dim_reduct_params = param_dict['dim_reduct']
-            # out1_params = param_dict['out1']
-            # out2_params = param_dict['out2']
 
         else:
             bert_params = None
             dim_reduct_params = None
-            # out1_params = None
-            # out2_params = None
 
         x = self.bert(inputs, params=bert_params)
         x = self.dim_reduct(x, params=dim_reduct_params)
         b, t, d = x.shape
         x = x.view(b, -1)  # Batch size x (t*d)
-        # x = self.relu(x)
-        # x = self.out1(x, params=out1_params)
-        # x = self.relu(x)
-        # x = self.out2(x, params=out2_params)
-        return 0.1 + torch.sigmoid(x)
 
     def zero_grad(self, params=None):
         if params is None:

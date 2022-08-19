@@ -7,13 +7,8 @@ from .base import MetaLinearLayer, MetaBERTEmbedding, extract_top_level_dict, Me
 
 
 class MetaGRU4REC(nn.Module):
-    """Neural Attentive Session Based Recommendation Model Class
-    Args:
-        n_items(int): the number of items
-        hidden_size(int): the hidden size of gru
-        embedding_dim(int): the dimension of item embedding
-        batch_size(int): 
-        n_layers(int): the number of gru layers
+    """
+        GRU4REC for regression task. 
     """
 
     def __init__(self, args):
@@ -83,19 +78,3 @@ class MetaGRU4REC(nn.Module):
                     # print(param.grad)
                     param.grad.zero_()
                     params[name].grad = None
-
-
-# inputs = (torch.LongTensor(np.ones((1, 1))), torch.LongTensor(np.ones((1, 29))),
-#           torch.LongTensor(np.ones((1, 1))), torch.FloatTensor(np.ones((1, 29))))
-
-# args = EasyDict({
-#     'narm_hidden_size': 64,
-#     'narm_n_layers': 2,
-#     'max_seq_len': 30,
-#     'bert_dropout': 0.3,
-#     'num_items': 500,
-#     'narm_embedding_dim': 16,
-#     'narm_output_dim': 32})
-
-# narm = MetaNARM(args)
-# out = narm(inputs)

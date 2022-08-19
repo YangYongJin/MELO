@@ -5,6 +5,7 @@ from .base import MetaLinearLayer, MetaBERTEmbedding, extract_top_level_dict, Me
 
 class MetaNARM(nn.Module):
     """Neural Attentive Session Based Recommendation Model Class
+    Model is modified for regression task.
     Args:
         n_items(int): the number of items
         hidden_size(int): the hidden size of gru

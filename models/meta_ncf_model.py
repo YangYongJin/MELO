@@ -7,13 +7,13 @@ import math
 from .base import extract_top_level_dict,  MetaBERTEmbedding, MetaLinearLayer
 
 
-## bert ##
 class MetaNCF(nn.Module):
+    """
+        MLP recommenders network NCF. Model is modified for regression task.
+    """
+
     def __init__(self, args):
         super().__init__()
-
-        # fix_random_seed_as(args.model_init_seed)
-        # self.init_weights()
 
         max_len = args.max_seq_len-1
         num_items = args.num_items
@@ -25,11 +25,11 @@ class MetaNCF(nn.Module):
 
         self.layer_dict = nn.ModuleDict()
 
-        # embedding for BERT, sum of positional, segment, token embeddings
+        # embedding for NCF, sum of positional, segment, token embeddings
         self.bert_embedding = MetaBERTEmbedding(
             vocab_size=vocab_size,  embed_size=self.hidden, max_len=max_len, dropout=dropout)
 
-        # multi-layers transformer blocks, deep network
+        # multi linear layers, deep network
         cur_layer = hidden
         self.n_layers = int(math.log(cur_layer, 2))
         for i in range(self.n_layers):
@@ -58,7 +58,7 @@ class MetaNCF(nn.Module):
         # embedding the indexed sequence to sequence of vectors
         x = self.bert_embedding(inputs, params=bert_embedding_params)
 
-        # running over multiple transformer blocks
+        # running over multiple linear layers
         for i in range(self.n_layers):
             x = self.layer_dict['linear{}'.format(i)].forward(
                 x, params=param_dict['linear{}'.format(i)])

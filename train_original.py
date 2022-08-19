@@ -8,7 +8,6 @@ from models.meta_loss_model import MetaTaskLstmNetwork
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import copy
 import os
 import numpy as np
 from torch.utils.tensorboard import SummaryWriter
@@ -18,9 +17,10 @@ LOG_INTERVAL = 1
 VAL_INTERVAL = 1
 
 
-class Pretrain:
+class Basic:
     def __init__(self, args):
 
+        # load dataloaders
         self.args = args
         self.batch_size = args.batch_size
         self.dataloader = DataLoader(args, pretraining=True)
@@ -30,13 +30,15 @@ class Pretrain:
         self.args.num_users = self.dataloader.num_users
         self.args.num_items = self.dataloader.num_items
 
+        # device settings
         self.device = torch.device('cpu')
         if torch.cuda.is_available():
             self.device = torch.cuda.current_device()
         self.args.device = self.device
-        # bert4rec model
+        # get basic model
         self.model = model_factory(self.args).to(self.device)
 
+        # set logging and saving folders
         self._log_dir = args.pretrain_log_dir
         self._save_dir = os.path.join(args.pretrain_log_dir, 'state')
         self._embedding_dir = os.path.join(args.pretrain_log_dir, 'embedding')
@@ -47,16 +49,17 @@ class Pretrain:
         os.makedirs(self._embedding_dir, exist_ok=True)
         os.makedirs(self._pretrained_dir, exist_ok=True)
 
-        # whether to use multi step loss
+        # hyperparamters and optimizers
         self._lr = args.pretraining_lr
         self.optimizer = optim.Adam(self.model.parameters(), lr=self._lr)
 
         self.loss_fn = nn.MSELoss(reduction='none')
         self.mae_loss_fn = nn.L1Loss()
 
+        # for learned weighted loss
         self.use_lstm = args.use_learned_loss_baseline
 
-        # # use lstm as task information
+        # use lstm as weighted loss
         if self.use_lstm:
             self._lstm_lr = args.lstm_lr
             lstm_hidden = args.lstm_hidden
@@ -70,17 +73,21 @@ class Pretrain:
         self.best_valid_rmse_loss = 987654321
         self.best_step = 0
 
+        # normalize ratings to get range from 0 to 1
         self.normalize_loss = self.args.normalize_loss
-
-        self.lr_scheduler = optim.lr_scheduler.\
-            MultiStepLR(self.optimizer, milestones=[
-                        400, 700, 900], gamma=0.1)
 
         self._train_step = 0
 
     def epoch_step(self, data_loader, train=True):
         '''
             do one epoch step
+            Args:
+                dataloader : data to train or evaluate
+                train: whether to train or evaluate
+            return:
+                mse_loss: mean query MSE loss over the batch
+                rmse_loss: mean query RMSE loss over the batch
+                mae_loss: mean query MAE loss over the batch
         '''
         mse_losses = []
         mae_losses = []
@@ -171,16 +178,16 @@ class Pretrain:
         return mse_loss, mae_loss, rmse_loss
 
     def train(self, epochs):
-        """Train the MAML.
+        """Train the Basic.
 
-        Optimizes MAML meta-parameters
+        Optimizes Basic models
         while periodically validating on validation_tasks, logging metrics, and
         saving checkpoints.
 
         Args:
             train_steps (int) : the number of steps this model should train for
         """
-        print(f"Starting MAML training at iteration {self._train_step}")
+        print(f"Starting Basic model training at iteration {self._train_step}")
 
         # initialize wandb project
         wandb.init(project=f"BASE-TRAIN-{self.args.model}-{self.args.mode}")
@@ -226,7 +233,6 @@ class Pretrain:
                         f'........Model saved (step: {self.best_step} | RMSE loss: {rmse_loss:.4f})')
 
             self._train_step += 1
-            # self.lr_scheduler.step()
         writer.close()
         print("-------------------------------------------------")
         print("Model with the best validation RMSE loss is saved.")
@@ -236,7 +242,7 @@ class Pretrain:
 
     def load(self, checkpoint_step):
         '''
-            load model
+            load model from checkpoint_step
         '''
         target_path = os.path.join(
             self._save_dir, f"{self.args.model}_{checkpoint_step}_no_meta_best")
@@ -258,7 +264,7 @@ class Pretrain:
 
     def _save_model(self):
         '''
-            save model
+            save models
         '''
         if self.args.save_pretrained:
             if self.args.model == 'sasrec' or self.args.model == 'bert4rec':
@@ -278,7 +284,7 @@ class Pretrain:
 
     def test(self):
         '''
-            test
+            test on basic models
         '''
 
         # initialize wandb project
@@ -302,18 +308,18 @@ class Pretrain:
 
 
 def main(args):
-    pretrain_module = Pretrain(args)
+    basic_model = Basic(args)
 
     if args.checkpoint_step > -1:
-        pretrain_module._train_step = args.checkpoint_step
-        pretrain_module.load(args.checkpoint_step)
+        basic_model._train_step = args.checkpoint_step
+        basic_model.load(args.checkpoint_step)
     else:
         print('Checkpoint loading skipped.')
 
     if args.test:
-        pretrain_module.test()
+        basic_model.test()
     else:
-        pretrain_module.train(epochs=args.pretrain_epochs)
+        basic_model.train(epochs=args.pretrain_epochs)
 
 
 if __name__ == '__main__':

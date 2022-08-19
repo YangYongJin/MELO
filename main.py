@@ -197,8 +197,8 @@ class MAML:
         second order derivatives and the current step's index.
         :param loss: Current step's loss with respect to the support set.
         :param names_weights_copy: A dictionary with names to parameters to update.
+        :param step: Current step's index.
         :param use_second_order: A boolean flag of whether to use second order derivatives.
-        :param current_step_idx: Current step's index.
         :return: A dictionary with the updated weights (name, param)
         """
 
@@ -258,15 +258,15 @@ class MAML:
         '''
         Forward propagation on query data
         Args:
-            query_inputs: query inputs
-            query_target_rating : query target rating
+            query_inputs: query set inputs
+            query_target_rating : query set target rating
             names_weights_copy: inner loop parameters
             mae_loss_fn : mae loss function
-            imp_weight : importance weight vector for gradients(multi step)
+            imp_weight : importance weight vector for gradients(multi step loss)
         return:
             query_loss : query loss containing gradients
-            query_out_loss: query loss to show
-            mae_loss: query mae loss to show
+            query_out_loss: query loss to visualize
+            mae_loss: query mae loss to visualize
         '''
         # zero grad
         loss_fn = nn.MSELoss(reduction='none')
@@ -305,7 +305,8 @@ class MAML:
             inputs: support data
             target_rating : target ratings
             step : current inner loop step
-            task_info : task information of current task
+            mask : mask for padded items
+            task_info : task information of current task(e.g. mean, std)
         return:
             loss: adaptive loss
         '''
@@ -645,7 +646,7 @@ class MAML:
 
     def test_baseline(self):
         '''
-            Test on test batches
+            Test baseline(using mean)
         '''
 
         rating_lst = sum(self.dataloader.train_set['rating'].tolist(), [])
@@ -741,6 +742,9 @@ class MAML:
         torch.save(model_dict, save_path)
 
     def _load_pretrained_embedding(self):
+        """
+            load embedding parts of meta model
+        """
         if torch.cuda.is_available():
             def map_location(storage, loc): return storage.cuda()
         else:
@@ -755,6 +759,9 @@ class MAML:
                 os.path.join(self._embedding_dir, f"{self.args.model}_embedding_{self.args.mode}"), map_location=map_location))
 
     def _load_pretrained(self):
+        """
+            load pretrained meta model (all parameters of model)
+        """
         if torch.cuda.is_available():
             def map_location(storage, loc): return storage.cuda()
         else:

@@ -44,7 +44,7 @@ class MetaLinearLayer(nn.Module):
         being able to receive a parameter dictionary at the forward pass which allows the convolution to use external
         weights instead of the internal ones stored in the linear layer. Useful for inner loop optimization in the meta
         learning setting.
-        :param input_shape: The shape of the input data, in the form (b, f)
+        :param in_features: The shape of the input features
         :param out_features: Number of output filters
         :param use_bias: Whether to use biases or not.
         """
@@ -88,9 +88,8 @@ class MetaEmbedding(nn.Module):
             being able to receive a parameter dictionary at the forward pass which allows the convolution to use external
             weights instead of the internal ones stored in the linear layer. Useful for inner loop optimization in the meta
             learning setting.
-            :param input_shape: The shape of the input data, in the form (b, f)
-            :param num_filters: Number of output filters
-            :param use_bias: Whether to use biases or not.
+            :param num_embeddings: The shape of the input vocab size
+            :param embedding_dim: size of embedding dimensions
         """
         super(MetaEmbedding, self).__init__()
 
@@ -99,12 +98,12 @@ class MetaEmbedding(nn.Module):
 
     def forward(self, x, params=None):
         """
-        Forward propagates by applying a linear function (Wx + b). If params are none then internal params are used.
+        Embedding Operation. If params are none then internal params are used.
         Otherwise passed params will be used to execute the function.
-        :param x: Input data batch, in the form (b, f)
-        :param params: A dictionary containing 'weights' and 'bias'. If params are none then internal params are used.
+        :param x: Input data batch, in the form (b, l, d)
+        :param params: A dictionary containing 'embedding weights'. If params are none then internal params are used.
         Otherwise the external are used.
-        :return: The result of the linear function.
+        :return: The result of the embedding function.
         """
         if params is not None:
             params = extract_top_level_dict(current_dict=params)
@@ -115,6 +114,9 @@ class MetaEmbedding(nn.Module):
 
 
 class MetaPositionalEmbedding(nn.Module):
+    """
+        Meta Positional Embedding Layer. It does similar operation as MetaEmbedding Layer.
+    """
 
     def __init__(self, max_len, d_model):
         super().__init__()
@@ -147,7 +149,9 @@ class MetaBERTEmbedding(nn.Module):
         """
         :param vocab_size: total vocab size
         :param embed_size: embedding size of token embedding
+        :param max_len: maximum sequence length
         :param dropout: dropout rate
+        :param needs_position: True if positional embedding is needed
         """
         super().__init__()
         self.embedding = MetaEmbedding(
@@ -185,8 +189,7 @@ class MetaBERTEmbedding(nn.Module):
 class MetaGRUCell(nn.Module):
 
     """
-    An implementation of GRUCell.
-
+    An implementation of GRUCell for meta learning setting.
     """
 
     def __init__(self, input_size, hidden_size, use_bias=True):
@@ -209,8 +212,6 @@ class MetaGRUCell(nn.Module):
 
         gate_x = self.x2h(x, params=x2h_params)
         gate_h = self.h2h(hidden, params=h2h_params)
-        # gate_x = gate_x.squeeze()
-        # gate_h = gate_h.squeeze()
 
         i_r, i_i, i_n = gate_x.chunk(3, 1)
         h_r, h_i, h_n = gate_h.chunk(3, 1)
@@ -225,6 +226,10 @@ class MetaGRUCell(nn.Module):
 
 
 class MetaGRUModel(nn.Module):
+    """
+    An implementation of   GRU for meta learning setting.
+    """
+
     def __init__(self, input_size, hidden_size, num_layers, output_size, bias=True):
         super(MetaGRUModel, self).__init__()
 
@@ -247,10 +252,6 @@ class MetaGRUModel(nn.Module):
         self.h0 = nn.Parameter(torch.randn(num_layers, hidden_size))
 
     def forward(self, x, params=None):
-
-        # Input of shape (batch_size, seqence length, input_size)
-        #
-        # Output of shape (batch_size, output_size)
 
         param_dict = {}
         if params is not None:
@@ -300,7 +301,7 @@ class MetaGRUModel(nn.Module):
 ################### gelu and layer norm #######################################
 class GELU(nn.Module):
     """
-    Paper Section 3.4, last paragraph notice that BERT used the GELU instead of RELU
+    GELU non linear activation.
     """
 
     def forward(self, x):
@@ -308,7 +309,7 @@ class GELU(nn.Module):
 
 
 class MetaLayerNorm(nn.Module):
-    "Construct a layernorm module (See citation for details)."
+    "Construct a layernorm module (See citation at original paper for details). "
 
     def __init__(self, features, eps=1e-6):
         super(MetaLayerNorm, self).__init__()

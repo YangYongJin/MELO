@@ -52,8 +52,8 @@ We use three datasets; movielens(1m and 10m), amazon grocery, and yelp. Movielen
 
 ## Code Structures
 "models" folder                      : This folder includes baseline models(Bert4rec, Narm, Sasrec, Gru4rec) with meta learning setting and adaptive loss networks<br/> 
-"dataloader" file                    : Data Preprocessing and Task Generation<br/>
-"main.py" file                       : MAML with Task Adaptive Loss Implementation <br/>
+"dataloader" file                    : This file contains data preprocessing and task generation for meta learner<br/>
+"main.py" file                       : Main Code. MELO and MAML with sequential recommenders can be trained using this amin file. <br/>
 "inner_loop_optimizers.py" file      : This code is same as inner loop optimizer for MAML++.<br/>
 "options.py"                         : Configuration file<br/>
 "train_original.py"                  : This code is used for training baseline models. With --save_pretrained option, you can save embedding and model parameters and use these parameters for training meta models.<br/>
