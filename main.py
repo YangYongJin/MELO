@@ -418,6 +418,8 @@ class MAML:
                 if self.task_info_predictions:
                     task_info_f = torch.cat(
                         (task_info, outputs.unsqueeze(2)), dim=2)
+                else:
+                    task_info_f = task_info
                 loss = self.compute_adaptive_loss(
                     loss, inputs, target_rating, step, mask, task_info_f)
 
