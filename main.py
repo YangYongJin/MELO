@@ -120,9 +120,9 @@ class MAML:
 
         # STATS network
         # loss, mean, std, labels, and predictions are included for statistical information
+        self.task_info_predictions = args.task_info_predictions
+        self.task_info_loss = args.task_info_loss
         if self.use_adaptive_loss_weight:
-            self.task_info_predictions = args.task_info_predictions
-            self.task_info_loss = args.task_info_loss
             num_loss_weight_dims = 1*args.task_info_loss + 1*args.task_info_rating_mean+1 * \
                 args.task_info_rating_std+1*args.task_info_predictions+1*args.task_info_labels
             self._task_info_lr = args.task_info_lr

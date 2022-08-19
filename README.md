@@ -44,7 +44,7 @@ This repository includes code for training MELO and MAML with various baselines(
 
 ## Datasets
 
-We use three datasets; movielens(1m and 10m), amazon grocery, and yelp. Movielens dataset are automatically downloaded if you run an experiment on movielens. After movielens dataset is downloaded, Data folder is created. For amazon dataset, create amazon folder inside Data folder and then upload Amazon Grocery dataset inside  amazon folder which can be downloaded from https://jmcauley.ucsd.edu/data/amazon/. For yelp dataset, create yelp folder inside Data folder and then upload yelp dataset inside yelp folder which can be downloaded from https://www.yelp.com/dataset/documentation/main
+We use three datasets; movielens(1m and 10m), amazon grocery, and yelp. Movielens dataset are automatically downloaded if you run an experiment on movielens. Preprocessed amazon grocery data is already in Data folder. Original amazon data can be downloaded from https://jmcauley.ucsd.edu/data/amazon/. For yelp dataset, you need to unzip yelp data since yelp dataset is much bigger than others. Original yelp data can be downloaded from https://www.yelp.com/dataset/documentation/main
 
 
 
@@ -66,59 +66,37 @@ Please read <strong>options.py</strong> carefully to adjust configurations
 <br/>
 
 
-## Training
+## MELO
 
-* MELO(BERT4REC baseline) - Amazon 
+* Train MELO(BERT4REC baseline) on Amazon dataset
 ```bash 
 python main.py --model=bert4rec --mode=amazon --data_path=./Data/amazon/grocery_ratings.csv  --val_size=1000 --num_test_data=5000 --num_train_iterations=3000 --load_pretrained_embedding=True 
 ```
-
-* MELO(BERT4REC baseline) - Yelp
-```bash 
-python main.py --model=bert4rec --mode=yelp --data_path=./Data/yelp/yelp_ratings.csv --val_size=2000 --num_test_data=5000 --num_train_iterations=4000 --load_pretrained_embedding=True   
-```
-
-* MELO(BERT4REC baseline) - Movielens
-place amazon ratings dataset(csv file) at Data/amazon/
-```bash 
-python main.py --model=bert4rec --mode=ml-1m --data_path=./Data/ml-1m/ratings.dat  --val_size=600 --num_test_data=1000 --num_train_iterations=2000 --load_pretrained_embedding=True --lstm_input=16 --lstm_hidden=128
-```
-
-* MAML(BERT4REC baseline) - Amazon 
-```bash 
-python main.py --model=bert4rec --mode=amazon --data_path=./Data/amazon/grocery_ratings.csv  --val_size=1000 --num_test_data=5000 --num_train_iterations=3000 --load_pretrained_embedding=True --use_adaptive_loss=False
-```
-
-* MAML(BERT4REC baseline) - Yelp
-```bash 
-python main.py --model=bert4rec --mode=yelp --data_path=./Data/yelp/yelp_ratings.csv --val_size=2000 --num_test_data=5000 --num_train_iterations=4000 --load_pretrained_embedding=True --use_adaptive_loss=False 
-```
-
-* MAML(BERT4REC baseline) - Movielens
-place amazon ratings dataset(csv file) at Data/amazon/
-```bash 
-python main.py --model=bert4rec --mode=ml-1m --data_path=./Data/ml-1m/ratings.dat  --val_size=600 --num_test_data=1000 --num_train_iterations=2000 --load_pretrained_embedding=True --use_adaptive_loss=False
-```
-
-## Test
 
 * Test MELO on Amazon with best step of n(e.g. 1750) 
 ```bash 
 python main.py --model=bert4rec --mode=amazon --data_path=./Data/amazon/grocery_ratings.csv  --val_size=1000 --num_test_data=5000 --num_train_iterations=3000 --load_pretrained_embedding=True --test --checkpoint_step=1750
 ```
 
+## MAML
+
+* Train MAML(BERT4REC baseline) on Amazon dataset
+```bash 
+python main.py --model=bert4rec --mode=amazon --data_path=./Data/amazon/grocery_ratings.csv  --val_size=1000 --num_test_data=5000 --num_train_iterations=3000 --load_pretrained_embedding=True --use_adaptive_loss=False
+```
+
 * Test MAML on Amazon with best step of n(e.g. 1750) 
 ```bash 
-python main.py --model=bert4rec --mode=amazon --data_path=./Data/amazon/grocery_ratings.csv  --val_size=1000 --num_test_data=5000 --num_train_iterations=3000 --load_pretrained_embedding=True --use_adaptive_loss=False --test --checkpoint_step=1750
+python main.py --model=bert4rec --mode=amazon --data_path=./Data/amazon/grocery_ratings.csv  --val_size=1000 --num_test_data=5000 --num_train_iterations=3000 --load_pretrained_embedding=True --use_adaptive_loss=False 
 ```
 
-## Train Baseline Model (without meta learning)
-* Train on Amazon Data
+## Basic Model (without meta learning)
+* Train BERT4REC on Amazon dataset
 ```bash 
-python train_original.py --save_pretrained=False --pretrain_epochs=40 --val_size=1000 --num_test_data=5000 --model=bert4rec --mode=amazon --data_path=./Data/amazon/grocery_ratings.csv
+python train_original.py --model=sasrec --mode=amazon --data_path=./Data/amazon/grocery_ratings.csv --pretrain_epochs=40 --val_size=1000 --num_test_data=5000 --save_pretrained=False
 ```
 
-* Test on Amazon Data with best step of n(e.g. 23) 
+* Test BERT4REC on Amazon with best step of n(e.g. 22) 
 ```bash 
-python train_original.py --save_pretrained=False --pretrain_epochs=40 --val_size=1000 --num_test_data=5000 --model=bert4rec --mode=amazon --data_path=./Data/amazon/grocery_ratings.csv --test --checkpoint_step=23
+python train_original.py --model=sasrec --mode=amazon --data_path=./Data/amazon/grocery_ratings.csv --val_size=1000 --num_test_data=5000 --save_pretrained=False --test --checkpoint_step=22
 ```
