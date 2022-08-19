@@ -70,7 +70,7 @@ parser.add_argument('--lstm_num_layers', type=int, default=1,
 parser.add_argument('--lstm_input_size', type=int, default=16,
                     help='input dimension of lstm')
 
-# adaptive loss network
+# mlp mean layers
 parser.add_argument('--loss_num_layers', type=int, default=1,
                     help='the number of adaptive loss layers')
 
@@ -118,9 +118,9 @@ parser.add_argument('--batch_size', type=int, default=16,
                     help='batch size')
 parser.add_argument('--val_size', type=int, default=600,
                     help='val batch size')
-parser.add_argument('--num_samples', type=int, default=64,
+parser.add_argument('--num_samples', type=int, default=25,
                     help='number of subsamples')
-parser.add_argument('--num_query_set', type=int, default=8,
+parser.add_argument('--num_query_set', type=int, default=3,
                     help='number of query samples')
 parser.add_argument('--default_rating', type=int, default=0,
                     help='rating value for padding')
@@ -129,7 +129,7 @@ parser.add_argument('--min_sub_window_size', type=int, default=2,
 parser.add_argument('--use_label', type=boolean_string, default=True,
                     help='use label as task information or input rating data as task information')
 
-# training options
+# training options(options for loss)
 parser.add_argument('--multi_step_loss_num_epochs', type=int, default=1000,
                     help='number of epochs using multi step loss')
 parser.add_argument('--use_multi_step', type=boolean_string, default=True,
@@ -143,9 +143,9 @@ parser.add_argument('--use_lstm', type=boolean_string, default=True,
 parser.add_argument('--use_step_loss', type=boolean_string, default=True,
                     help='use step by step mlp mean loss')
 parser.add_argument('--use_focal_loss', type=boolean_string, default=False,
-                    help='use focal(shrinkage) loss')
+                    help='use focal(shrinkage) loss for inner loss')
 parser.add_argument('--use_mlp_mean', type=boolean_string, default=False,
-                    help='use lstm for task information')
+                    help='use mlp for aggregate item losses')
 parser.add_argument('--use_softmax', type=boolean_string, default=False,
                     help='use softmax at task layer')
 parser.add_argument('--normalize_loss', type=boolean_string, default=True,

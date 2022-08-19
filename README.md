@@ -93,10 +93,10 @@ python main.py --model=bert4rec --mode=amazon --data_path=./Data/amazon/grocery_
 ## Basic Model (without meta learning)
 * Train BERT4REC on Amazon dataset
 ```bash 
-python train_original.py --model=sasrec --mode=amazon --data_path=./Data/amazon/grocery_ratings.csv --pretrain_epochs=40 --val_size=1000 --num_test_data=5000 --save_pretrained=False
+python train_original.py --model=bert4rec --mode=amazon --data_path=./Data/amazon/grocery_ratings.csv --pretrain_epochs=40 --val_size=1000 --num_test_data=5000 --save_pretrained=False
 ```
 
 * Test BERT4REC on Amazon with best step of n(e.g. 22) 
 ```bash 
-python train_original.py --model=sasrec --mode=amazon --data_path=./Data/amazon/grocery_ratings.csv --val_size=1000 --num_test_data=5000 --save_pretrained=False --test --checkpoint_step=22
+python train_original.py --model=bert4rec --mode=amazon --data_path=./Data/amazon/grocery_ratings.csv --val_size=1000 --num_test_data=5000 --save_pretrained=False --test --checkpoint_step=22
 ```

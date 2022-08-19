@@ -209,6 +209,8 @@ class MetaBERT4Rec(nn.Module):
         b, t, d = x.shape
         x = x.view(b, -1)  # Batch size x (t*d)
 
+        return 0.1 + torch.sigmoid(x)
+
     def zero_grad(self, params=None):
         if params is None:
             for param in self.parameters():
