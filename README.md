@@ -44,7 +44,7 @@ This repository includes code for training MELO and MAML with various baselines(
 
 ## Datasets
 
-We use three datasets; movielens(1m and 10m), amazon grocery, and yelp. Movielens dataset are automatically downloaded if you run an experiment on movielens. Preprocessed amazon grocery data is already in Data folder. Original amazon data can be downloaded from https://jmcauley.ucsd.edu/data/amazon/. For yelp dataset, you can download from https://www.dropbox.com/s/sevf5ffj8iz2ds0/yelp_ratings.csv?dl=0 and upload the data at yelp folder. You need to create yelp folder under Data folder before downloading. Original yelp data can be downloaded from https://www.yelp.com/dataset/documentation/main
+We use three datasets; movielens(1m and 10m), amazon grocery, and yelp. Movielens dataset are automatically downloaded if you run an experiment on movielens. Preprocessed amazon grocery data is already in Data folder. Original amazon data can be downloaded from https://jmcauley.ucsd.edu/data/amazon/. For yelp and amazon sports dataset, you need to unzip each rating file with the same name. Original yelp data can be downloaded from https://www.yelp.com/dataset/documentation/main.
 
 
 

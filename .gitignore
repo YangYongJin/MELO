@@ -2,12 +2,15 @@
 *.pyc
 *.swp
 *.json
-*.zip
+# *.zip
 
-Data/
+# Data/
 log/
 log_pretrained/
 wandb/
+*sports_ratings.csv
+*yelp_ratings.csv
+
 
 test.py
 
