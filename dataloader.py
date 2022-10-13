@@ -440,12 +440,17 @@ class DataLoader():
         rating_info = self.task_info_rating_mean * \
             [rating_mean] + self.task_info_rating_std*[rating_std]
 
-        rating_info = torch.stack(rating_info)
-        rating_info = rating_info.repeat(
-            len(ratings), self.max_sequence_length, 1)
-        if self.task_info_labels:
-            rating_info = torch.cat(
-                (rating_info, ratings.unsqueeze(2)/5.0), dim=2)
+        if rating_info:
+            rating_info = torch.stack(rating_info)
+            rating_info = rating_info.repeat(
+                len(ratings), self.max_sequence_length, 1)
+            if self.task_info_labels:
+                rating_info = torch.cat(
+                    (rating_info, ratings.unsqueeze(2)/5.0), dim=2)
+
+        else:
+            if self.task_info_labels:
+                rating_info = ratings.unsqueeze(2)/5.0
         return rating_info
 
     def generate_task(self, mode="train", batch_size=20, normalized=False, use_label=True):
