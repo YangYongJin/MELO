@@ -76,7 +76,25 @@ class Basic:
         # normalize ratings to get range from 0 to 1
         self.normalize_loss = self.args.normalize_loss
 
+        self.rating_info = {}
+        for i in range(1,6):
+            self.rating_info['rating_'+str(i)] = {}
+            self.rating_info['rating_'+str(i)]['loss'] = []
+            self.rating_info['rating_'+str(i)]['pred'] = []
+            self.rating_info['rating_'+str(i)]['num'] = []
+
         self._train_step = 0
+
+    def eval_by_rating(self, output, target_rating, loss_fn):
+        with torch.no_grad():
+            for i in range(1,6):
+                if (target_rating == i).sum() > 0:
+                    rating_value = (torch.sum(loss_fn(
+                            output*(target_rating == i), target_rating*(target_rating == i)))/(target_rating == i).sum())
+                
+                    self.rating_info['rating_'+str(i)]['loss'].append(rating_value.item())
+                    self.rating_info['rating_'+str(i)]['pred'] += (output[target_rating == i]).tolist()
+                    self.rating_info['rating_'+str(i)]['num'].append((target_rating == i).sum().item()) 
 
     def epoch_step(self, data_loader, train=True):
         '''
@@ -134,6 +152,7 @@ class Basic:
                         task_input).squeeze()
                     adapt_loss = loss * task_info * mask
                     loss = adapt_loss.sum()/torch.count_nonzero(adapt_loss)
+                    
                 else:
                     loss = loss.sum()/torch.count_nonzero(loss)
                 mse_loss = torch.mean(self.loss_fn(
@@ -141,6 +160,8 @@ class Basic:
                 mae_loss = self.mae_loss_fn(
                     outputs[:, -1:].clone().detach()*5, target_rating)
                 rmse_loss = torch.sqrt(mse_loss)
+                if not train:
+                    self.eval_by_rating(outputs[:, -1:].clone().detach()*5, target_rating, self.loss_fn)
 
             else:
                 loss = self.loss_fn(outputs*mask, gt*mask)
@@ -159,6 +180,9 @@ class Basic:
                     outputs[:, -1:].clone().detach(), target_rating)
                 rmse_loss = torch.sqrt(mse_loss)
 
+                if not train:
+                    self.eval_by_rating(outputs[:, -1:].clone().detach(), target_rating, self.loss_fn)
+
             # update paramters
             if train:
                 loss.backward()
@@ -166,6 +190,8 @@ class Basic:
                 if self.use_lstm:
                     self.task_lstm_optimizer.step()
                     self.lstm_lr_scheduler.step()
+
+            
             mse_losses.append(mse_loss.item())
             mae_losses.append(mae_loss.item())
             rmse_losses.append(rmse_loss.item())
@@ -301,6 +327,14 @@ class Basic:
             f'Test RMSE loss: {rmse_loss:.4f} | '
             f'Test MAE loss: {mae_loss:.4f} | '
         )
+        print(' -------- Rating ---- ')
+        for k,v in self.rating_info.items():
+            print('Information of ', k)
+            print('The Number of items', np.sum(v['num']))
+            print('Loss Mean', np.sqrt(np.mean((v['loss']))))
+            print('Prediction Mean', np.mean((v['pred'])))
+            print('Prediction Median', np.median((v['pred'])))
+            print('Prediction Std', np.std((v['pred'])))
         wandb.log({
             "Test RMSE loss": rmse_loss,
             "Test MAE loss": mae_loss
