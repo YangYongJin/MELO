@@ -12,7 +12,7 @@ import torch.optim as optim
 import os
 import numpy as np
 from tqdm import tqdm
-from torch.utils.tensorboard import SummaryWriter
+# from torch.utils.tensorboard import SummaryWriter
 
 
 # SAVE_INTERVAL = 50
@@ -147,6 +147,13 @@ class MAML:
 
         self.use_mlp_mean = args.use_mlp_mean
 
+        self.rating_info = {}
+        for i in range(1,6):
+            self.rating_info['rating_'+str(i)] = {}
+            self.rating_info['rating_'+str(i)]['loss'] = []
+            self.rating_info['rating_'+str(i)]['pred'] = []
+            self.rating_info['rating_'+str(i)]['num'] = []
+
         # best results
         self.best_step = 0
         self.best_valid_rmse_loss = 987654321
@@ -254,7 +261,24 @@ class MAML:
 
         # forward on query data
 
-    def query_forward(self, query_inputs, query_target_rating, names_weights_copy, mae_loss_fn, imp_weight=1):
+    def eval_by_rating(self, output, target_rating, loss_fn):
+        with torch.no_grad():
+            for i in range(1,6):
+                if (target_rating == i).sum() > 0:
+                    rating_value = (torch.sum(loss_fn(
+                            output*(target_rating == i), target_rating*(target_rating == i)))/(target_rating == i).sum())
+                    if (i==1):
+                        print(i, loss_fn(
+                                output*(target_rating == i), target_rating*(target_rating == i)))
+                        print(torch.sum(loss_fn(
+                            output*(target_rating == i), target_rating*(target_rating == i)))/(target_rating == i).sum())
+                
+                    self.rating_info['rating_'+str(i)]['loss'].append(rating_value.item())
+                    self.rating_info['rating_'+str(i)]['pred'] += (output[target_rating == i]).tolist()
+                    self.rating_info['rating_'+str(i)]['num'].append((target_rating == i).sum().item())
+
+
+    def query_forward(self, query_inputs, query_target_rating, names_weights_copy, mae_loss_fn, imp_weight=1, train=False):
         '''
         Forward propagation on query data
         Args:
@@ -286,12 +310,17 @@ class MAML:
                 outputs[:, -1:].clone().detach()*5, query_target_rating)
             query_out_loss = torch.mean(loss_fn(
                 outputs[:, -1:]*5.0, query_target_rating)).clone().detach().to("cpu")
+            if not train:
+                self.eval_by_rating(outputs[:, -1:]*5.0, query_target_rating, loss_fn)
         else:
             query_loss = loss_fn(outputs*mask, gt*mask).sum()/mask.sum()
             mae_loss = mae_loss_fn(
                 outputs[:, -1:].clone().detach(), query_target_rating)
             query_out_loss = torch.mean(loss_fn(
                 outputs[:, -1:], query_target_rating)).clone().detach().to("cpu")
+            if not train:
+                self.eval_by_rating(outputs[:, -1:], query_target_rating, loss_fn)
+        
 
         query_loss = query_loss * imp_weight
 
@@ -434,7 +463,7 @@ class MAML:
             ##### multi step loss - update meta paramters ######
             if self.use_multi_step and self._train_step < self.args.multi_step_loss_num_epochs and train:
                 query_loss, query_out_loss, mae_loss = self.query_forward(
-                    query_inputs, query_target_rating, names_weights_copy, mae_loss_fn, imp_vecs[step])
+                    query_inputs, query_target_rating, names_weights_copy, mae_loss_fn, imp_vecs[step], train)
                 task_mse_losses.append(query_loss)
                 task_mse_out_losses.append(query_out_loss)
                 task_mae_losses.append(mae_loss)
@@ -446,7 +475,7 @@ class MAML:
                 if step == self._num_inner_steps - 1:
 
                     query_loss, query_out_loss, mae_loss = self.query_forward(
-                        query_inputs, query_target_rating, names_weights_copy, mae_loss_fn)
+                        query_inputs, query_target_rating, names_weights_copy, mae_loss_fn, train)
                     task_mse_losses.append(query_loss)
                     task_mse_out_losses.append(query_out_loss)
                     task_mae_losses.append(mae_loss)
@@ -533,7 +562,7 @@ class MAML:
                 project=f"MAML-TRAIN-{self.args.model}-{self.args.mode}")
 
         # define tensorboard writer and wandb config
-        writer = SummaryWriter(log_dir=self._log_dir)
+        # # writer = SummaryWriter(log_dir=self._log_dir)
         wandb.config.update(self.args)
 
         val_batches = self.dataloader.generate_task(
@@ -560,10 +589,10 @@ class MAML:
                     f'RMSE loss: {rmse_loss:.4f} | '
                     f'MAE loss: {mae_loss:.4f} | '
                 )
-                writer.add_scalar("train/MSEloss", mse_loss, self._train_step)
-                writer.add_scalar("train/RMSEloss",
-                                  rmse_loss, self._train_step)
-                writer.add_scalar("train/MAEloss", mae_loss, self._train_step)
+                # writer.add_scalar("train/MSEloss", mse_loss, self._train_step)
+                # writer.add_scalar("train/RMSEloss",
+                                #   rmse_loss, self._train_step)
+                # writer.add_scalar("train/MAEloss", mae_loss, self._train_step)
 
             # evaluate validation set
             if i % self.val_log_interval == 0:
@@ -596,11 +625,11 @@ class MAML:
                     print(
                         f'........Model saved (step: {self.best_step} | RMSE loss: {rmse_loss:.4f})')
 
-                writer.add_scalar("valid/MSEloss", mse_loss, self._train_step)
-                writer.add_scalar("valid/RMSEloss",
-                                  rmse_loss, self._train_step)
-                writer.add_scalar("valid/MAEloss", mae_loss, self._train_step)
-        writer.close()
+                # writer.add_scalar("valid/MSEloss", mse_loss, self._train_step)
+                # writer.add_scalar("valid/RMSEloss",
+                                #   rmse_loss, self._train_step)
+                # writer.add_scalar("valid/MAEloss", mae_loss, self._train_step)
+        # writer.close()
 
         print("-------------------------------------------------")
         print("Model with the best validation RMSE loss is saved.")
@@ -641,6 +670,14 @@ class MAML:
             f'Test RMSE loss: {rmse_loss:.4f} | '
             f'Test MAE loss: {mae_loss:.4f} | '
         )
+        print(' -------- Rating ---- ')
+        for k,v in self.rating_info.items():
+            print('Information of ', k)
+            print('The Number of items', np.sum(v['num']))
+            print('Loss Mean', np.sqrt(np.mean((v['loss']))))
+            print('Prediction Mean', np.mean((v['pred'])))
+            print('Prediction Median', np.median((v['pred'])))
+            print('Prediction Std', np.std((v['pred'])))
         wandb.log({
             "Test RMSE loss": rmse_loss,
             "Test MAE loss": mae_loss

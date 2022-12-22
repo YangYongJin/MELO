@@ -10,7 +10,7 @@ import torch.nn as nn
 import torch.optim as optim
 import os
 import numpy as np
-from torch.utils.tensorboard import SummaryWriter
+# from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 SAVE_INTERVAL = 100
 LOG_INTERVAL = 1
@@ -193,7 +193,7 @@ class Basic:
         wandb.init(project=f"BASE-TRAIN-{self.args.model}-{self.args.mode}")
 
         # define tensorboard writer and wandb config
-        writer = SummaryWriter(log_dir=self._log_dir)
+        # writer = SummaryWriter(log_dir=self._log_dir)
         wandb.config.update(self.args)
 
         for epoch in range(epochs):
@@ -207,10 +207,10 @@ class Basic:
                     f'RMSE loss: {rmse_loss:.4f} | '
                     f'MAE loss: {mae_loss:.4f} | '
                 )
-                writer.add_scalar(
-                    "train/MSEloss", mse_loss, self._train_step)
-                writer.add_scalar(
-                    "train/MAEloss", mae_loss, self._train_step)
+                # writer.add_scalar(
+                #     "train/MSEloss", mse_loss, self._train_step)
+                # writer.add_scalar(
+                #     "train/MAEloss", mae_loss, self._train_step)
 
             if epoch % VAL_INTERVAL == 0:
                 mse_loss, mae_loss, rmse_loss = self.epoch_step(
@@ -233,7 +233,7 @@ class Basic:
                         f'........Model saved (step: {self.best_step} | RMSE loss: {rmse_loss:.4f})')
 
             self._train_step += 1
-        writer.close()
+        # writer.close()
         print("-------------------------------------------------")
         print("Model with the best validation RMSE loss is saved.")
         print(f'Best step: {self.best_step}')
