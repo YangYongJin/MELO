@@ -267,11 +267,6 @@ class MAML:
                 if (target_rating == i).sum() > 0:
                     rating_value = (torch.sum(loss_fn(
                             output*(target_rating == i), target_rating*(target_rating == i)))/(target_rating == i).sum())
-                    if (i==1):
-                        print(i, loss_fn(
-                                output*(target_rating == i), target_rating*(target_rating == i)))
-                        print(torch.sum(loss_fn(
-                            output*(target_rating == i), target_rating*(target_rating == i)))/(target_rating == i).sum())
                 
                     self.rating_info['rating_'+str(i)]['loss'].append(rating_value.item())
                     self.rating_info['rating_'+str(i)]['pred'] += (output[target_rating == i]).tolist()
